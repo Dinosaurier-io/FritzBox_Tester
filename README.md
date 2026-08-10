@@ -1,6 +1,12 @@
-# FRITZ!Box Langzeit-Testsystem (`fbtest`)
+<div align="center">
+
+<img src="docs/bilder/banner.png" alt="FRITZ!Box Langzeit-Testsystem" width="840">
+
+<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 407 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
 
 **Version 0.1.0a1 (Alpha)** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
+
+</div>
 
 Ein automatisiertes Testsystem, das die Stabilität einer FRITZ!Box über Stunden bis Tage
 unbeaufsichtigt prüft: Es erzeugt LAN- und WLAN-Datenverkehr, überwacht permanent Erreichbarkeit
@@ -8,6 +14,14 @@ und Internetverbindung, erkennt Ausfälle sowie ungeplante Router-Neustarts, pro
 mit Zeitstempel und erstellt am Ende einen Testbericht.
 
 **Zweck:** verschiedene Firmware-Versionen objektiv und reproduzierbar vergleichen.
+
+<p align="center">
+  <img src="docs/bilder/bericht-kennzahlen.png" alt="Bericht: Kopfdaten und Management-Summary eines Testlaufs" width="880">
+</p>
+<p align="center">
+  <sub>Das Ergebnis eines Laufs: eine einzelne HTML-Datei mit allen Kennzahlen.<br>
+  Sämtliche Bericht-Abbildungen dieser Seite stammen aus einem <a href="#beispieldaten">erzeugten Beispiellauf</a>, nicht aus einem echten Netz.</sub>
+</p>
 
 ---
 
@@ -23,6 +37,8 @@ mit Zeitstempel und erstellt am Ende einen Testbericht.
 8. [Wie die Auswertung zu lesen ist](#wie-die-auswertung-zu-lesen-ist)
 9. [Grenzen des Systems](#grenzen-des-systems)
 10. [Entwicklung und Qualitätssicherung](#entwicklung-und-qualitätssicherung)
+11. [Beispieldaten](#beispieldaten)
+12. [Lizenz](#lizenz)
 
 ---
 
@@ -45,12 +61,35 @@ mit Zeitstempel und erstellt am Ende einen Testbericht.
 Ein reines „Internet weg"-Protokoll ist wertlos, wenn man nicht weiß, *woran* es lag. Deshalb
 klassifiziert das System jeden Ausfall:
 
+```mermaid
+flowchart TD
+    A{"Gateway-Ping<br>an die FRITZ!Box"}
+    A -->|antwortet| B{"Pings ins Internet"}
+    A -->|tot| C{"Was meldet der<br>WLAN-Monitor?"}
+    B -->|antworten| OK(["kein Ausfall"])
+    B -->|tot| WAN(["<b>wan</b><br>Box läuft, Internet weg"])
+    C -->|"getrennt"| WLAN(["<b>wlan</b><br>WLAN des Messgeräts abgerissen"])
+    C -->|"verbunden oder unbekannt"| GW(["<b>gateway</b> / <b>full</b><br>Box antwortet nicht"])
+
+    style OK fill:#dff3e4,stroke:#2e9e6b,color:#14243a
+    style WAN fill:#fdecea,stroke:#d2504a,color:#14243a
+    style WLAN fill:#fdecea,stroke:#d2504a,color:#14243a
+    style GW fill:#fdecea,stroke:#d2504a,color:#14243a
+```
+
 | Klassifikation | Bedeutung | Erkannt an |
 |---|---|---|
 | `wan` | FRITZ!Box antwortet, Internet nicht | Gateway-Ping ok, Internet-Pings tot |
 | `gateway` | FRITZ!Box selbst antwortet nicht | Gateway-Ping tot, lokale Verbindung besteht |
 | `wlan` | WLAN des Messgeräts ist abgerissen | Gateway-Ping tot **und** WLAN-Monitor meldet „getrennt" |
 | `full` | nichts erreichbar, keine lokale Ursache | alle Pings tot, WLAN-Zustand unauffällig oder unbekannt |
+
+Im Bericht steht diese Einordnung direkt in der Ausfalltabelle – mitsamt einer Lesehilfe, damit
+sie auch ohne diese Seite verständlich ist:
+
+<p align="center">
+  <img src="docs/bilder/bericht-ereignisse.png" alt="Bericht: Ausfalltabelle mit Klassifikation und Ereignisliste" width="880">
+</p>
 
 Ebenso wichtig ist die Trennung **Router-Neustart vs. Verbindungsabbruch**: Die FRITZ!Box meldet
 über TR-064 ihre eigene Laufzeit. Dieser Wert wächst monoton – *außer* die Box wurde neu
@@ -69,55 +108,40 @@ erneuert. Genau diese Unterscheidung macht Firmware-Vergleiche belastbar.
 
 ### Datenfluss
 
-```
-   ┌──────────────────────────── Messgerät (Laptop) ────────────────────────────┐
-   │                                                                            │
-   │  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  ┌────────────────┐  │
-   │  │ ping_monitor│  │uptime_monitor│  │traffic_generator│ │   speedtest    │  │
-   │  │ ICMP, DNS,  │  │ TR-064-Poll, │  │ web/stream/    │ │ Down/Up +      │  │
-   │  │ Outage-Erk. │  │ Reboot-Erk.  │  │ download/upload│ │ Bufferbloat    │  │
-   │  └──────┬──────┘  └──────┬───────┘  └───────┬────────┘ └───────┬────────┘  │
-   │         │                │                  │                  │           │
-   │         │         ┌──────┴──────┐           │   ┌──────────────┘           │
-   │         │         │ wlan_monitor│           │   │ TrafficGate              │
-   │         │         │ netsh / iw  │           │◄──┘ (pausiert Last während   │
-   │         │         │ + TR-064    │           │      der Messung)            │
-   │         │         └──────┬──────┘           │                              │
-   │         │                │                  │                              │
-   │         ▼                ▼                  ▼                              │
-   │  ╔══════════════════════════════════════════════════╗                       │
-   │  ║          EventBus  (asyncio.Queue)               ║                       │
-   │  ║   Measurement · Event · RouterStatus · Outage    ║                       │
-   │  ╚═══════════════════════┬══════════════════════════╝                       │
-   │                          │                                                  │
-   │            ┌─────────────┴──────────────┐                                   │
-   │            │  Scheduler (Supervisor)     │  überwacht alle Module,          │
-   │            │  Absturz → Log + Event +    │  Neustart mit Backoff 1s→60s     │
-   │            │  automatischer Neustart     │  + Standby-/Zeitsprung-Erkennung │
-   │            └─────────────┬───────────────┘                                   │
-   │                          │                                                  │
-   │                          ▼                                                  │
-   │            ┌──────────────────────────┐                                     │
-   │            │  DatabaseWriter          │  sammelt und schreibt gebündelt     │
-   │            │  alle 5 s / 500 Zeilen   │  (statt tausender Einzel-Commits)   │
-   │            └────────────┬─────────────┘                                     │
-   └─────────────────────────┼───────────────────────────────────────────────────┘
-                             ▼
-                  ┌─────────────────────┐
-                  │  SQLite (WAL-Modus) │  data/fbtest.sqlite
-                  │  alle Testläufe     │  test_runs, measurements, events,
-                  │  in einer Datei     │  router_status, wlan_status,
-                  └──────────┬──────────┘  speedtests, outages
-                             │
-              ┌──────────────┼──────────────┬───────────────┐
-              ▼              ▼              ▼               ▼
-        ┌──────────┐  ┌────────────┐  ┌──────────────┐ ┌───────────┐
-        │  export  │  │   report   │  │report --compare│ │ dashboard │
-        │ CSV/JSON │  │ HTML+Charts│  │ zwei Firmwares│ │  FastAPI  │
-        └──────────┘  └────────────┘  └──────────────┘ └─────┬─────┘
-                                                             │
-   Das Dashboard liest den Live-Zustand direkt aus den Modulen ┘
-   (nicht aus der Datenbank) und ist damit sekundenaktuell.
+```mermaid
+flowchart TD
+    subgraph MESS["Messgerät (Laptop)"]
+        direction TB
+        PING["<b>ping_monitor</b><br>ICMP · DNS · Ausfallerkennung"]
+        UPTIME["<b>uptime_monitor</b><br>TR-064 · Neustart-Erkennung"]
+        WLAN["<b>wlan_monitor</b><br>netsh / iw · TR-064"]
+        TRAFFIC["<b>traffic_generator</b><br>Surfen · Stream · Download · Upload"]
+        SPEED["<b>speedtest</b><br>Down / Up · Bufferbloat"]
+
+        BUS{{"<b>EventBus</b> · asyncio.Queue<br>Measurement · Event · RouterStatus<br>WlanStatus · SpeedtestResult · Outage"}}
+        SCHED["<b>Scheduler</b><br>überwacht jedes Modul, startet<br>Abstürze neu (Backoff 1 s → 60 s)"]
+        WRITER["<b>DatabaseWriter</b><br>einziger Konsument des Busses,<br>schreibt gebündelt: 5 s / 500 Zeilen"]
+
+        PING --> BUS
+        UPTIME --> BUS
+        WLAN --> BUS
+        TRAFFIC --> BUS
+        SPEED --> BUS
+        SPEED -. "TrafficGate: pausiert die Last<br>während der Messung" .-> TRAFFIC
+        SCHED -.-> PING
+        SCHED -.-> UPTIME
+        SCHED -.-> WLAN
+        SCHED -.-> TRAFFIC
+        SCHED -.-> SPEED
+        BUS --> WRITER
+    end
+
+    WRITER --> DB[("<b>SQLite</b> im WAL-Modus<br>data/fbtest.sqlite<br>alle Testläufe in einer Datei")]
+    DB --> EXPORT["<b>export</b><br>CSV · JSON · XLSX"]
+    DB --> REPORT["<b>report</b><br>HTML mit Diagrammen"]
+    DB --> COMPARE["<b>report --compare</b><br>zwei Firmware-Läufe"]
+    DB --> DASH["<b>dashboard</b> · FastAPI<br>Ereignisse alle 15 s"]
+    PING -. "Live-Zustand alle 2 s,<br>direkt aus dem Arbeitsspeicher" .-> DASH
 ```
 
 ### Warum diese Struktur?
@@ -161,6 +185,8 @@ Fritzbox_Test_APP/
 │  └─ resources/             config.example.yaml (kommentierte Vorlage)
 ├─ packaging/                PyInstaller-Spec · Build-Skripte · Startvorbereitung
 ├─ tests/                    407 Tests, ohne Netzwerk lauffähig
+├─ docs/bilder/              Abbildungen dieser Datei
+├─ beispieldaten/            Exporte zweier Läufe zum Ausprobieren
 ├─ assets/                   erzeugte Symbole (gitignored)
 ├─ data/ exports/ reports/ logs/     (gitignored)
 └─ pyproject.toml            ruff · mypy · pytest
@@ -517,6 +543,13 @@ Für die Beobachtung eines mehrtägigen Laufs ist das Dashboard deutlich angeneh
 Terminal: Der Browser darf jederzeit geschlossen und wieder geöffnet werden, ohne dass die
 Messung etwas davon merkt.
 
+<p align="center">
+  <img src="docs/bilder/dashboard-live.png" alt="Dashboard, Reiter Live: Fortschritt, Kennzahlen-Kacheln, Ping-Ziele, Module, Datenverkehr, Bandbreite und Ereignis-Ticker" width="880">
+</p>
+<p align="center">
+  <sub>Der Reiter <em>Live</em> während eines laufenden Tests.</sub>
+</p>
+
 ### Was das Dashboard zeigt
 
 | Reiter | Inhalt |
@@ -525,6 +558,10 @@ Messung etwas davon merkt.
 | **Testläufe** | alle gespeicherten Läufe; Bericht, Tabelle, Rohdaten, Abschliessen und Löschen je Lauf, zwei markierte Läufe direkt vergleichen |
 | **Vorabprüfung** | dieselben Prüfungen wie `fbtest check`, mit einem Klick |
 | **Einstellungen** | Konfiguration als Formular, Rohansicht, Passwort, Diagnose |
+
+<p align="center">
+  <img src="docs/bilder/dashboard-testlaeufe.png" alt="Dashboard, Reiter Testläufe: Tabelle aller gespeicherten Läufe mit Schaltflächen für Bericht, Tabelle, Rohdaten und Löschen" width="880">
+</p>
 
 Ein Testlauf lässt sich hier auch **starten und beenden**. Der Lauf läuft im
 Dashboard-Prozess; „Testlauf beenden" wirkt exakt wie Strg+C auf der Kommandozeile —
@@ -587,6 +624,10 @@ die Länge der Lücke – und den drei Möglichkeiten *fortsetzen*, *als beendet
 *verwerfen*. Stillschweigendes Fortsetzen wäre falsch, wenn zwischen Absturz und Neustart Tage
 liegen: Dann klebt man zwei Messreihen zusammen, die nichts miteinander zu tun haben.
 
+<p align="center">
+  <img src="docs/bilder/dashboard-wiederaufnahme.png" alt="Dialog: Abgebrochener Testlauf gefunden, mit Zahlen zur Lücke und den Möglichkeiten fortsetzen, als beendet markieren oder verwerfen" width="700">
+</p>
+
 ### Zwei Datenquellen, zwei Takte
 
 Das ist die zentrale Entwurfsentscheidung der Oberfläche:
@@ -638,6 +679,13 @@ von unterwegs besser einen SSH-Tunnel verwenden.
 
 Der Bericht ist eine **einzige HTML-Datei**; alle Diagramme sind als Base64 eingebettet. Er lässt
 sich weitergeben, archivieren und direkt aus dem Browser drucken (eigene Druckstile enthalten).
+
+Die Diagramme markieren Ausfälle als Fläche und Router-Neustarts als senkrechte Linie. Damit ist
+auf einen Blick erkennbar, ob ein Latenzanstieg zufällig war oder mit einem Ereignis zusammenfällt:
+
+<p align="center">
+  <img src="docs/bilder/bericht-verlauf.png" alt="Bericht: Latenz- und Paketverlustverlauf je Ping-Ziel, mit markiertem Ausfall und Router-Neustart" width="880">
+</p>
 
 | Kennzahl | Bedeutung | Richtung |
 |---|---|---|
@@ -752,6 +800,18 @@ Bezeichner auf **Englisch**. Type Hints durchgehend.
 
 ---
 
+## Beispieldaten
+
+Wer keine FRITZ!Box zur Hand hat, findet unter [`beispieldaten/`](beispieldaten/) die Exporte
+zweier echter Testläufe (CSV und JSON). WLAN-Namen und MAC-Adressen sind darin durch
+Platzhalter ersetzt, alle Messwerte sind unverändert.
+
+Die **Bericht-Abbildungen dieser Seite** zeigen keinen dieser Läufe, sondern einen eigens dafür
+erzeugten Testlauf mit erfundenen Messwerten. Grund ist derselbe wie bei den Platzhaltern oben:
+In einem Screenshot eines echten Laufs stünden Namen und Adressen eines fremden Heimnetzes.
+
+---
+
 ## Lizenz
 
 MIT, siehe [LICENSE](LICENSE). Verwendung und Weitergabe sind erlaubt, solange der
@@ -759,9 +819,3 @@ Urheberrechtshinweis erhalten bleibt.
 
 FRITZ!Box und FRITZ!OS sind Marken der AVM GmbH. Dieses Projekt steht in keiner Verbindung zu
 AVM; die Symbole sind eigenes Design und enthalten keine fremden Marken oder Logos.
-
-## Beispieldaten
-
-Wer keine FRITZ!Box zur Hand hat, findet unter [`beispieldaten/`](beispieldaten/) die Exporte
-zweier echter Testläufe (CSV und JSON). WLAN-Namen und MAC-Adressen sind darin durch
-Platzhalter ersetzt, alle Messwerte sind unverändert.
