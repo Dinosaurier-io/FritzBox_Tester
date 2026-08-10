@@ -26,9 +26,10 @@ pywebview>=5.3          # nativer Fensterrahmen (Windows: WebView2)
 pystray>=0.19           # Symbol im Infobereich
 Pillow>=11              # zeichnet die Programmsymbole
 
-# --- Bericht ---------------------------------------------------------------
+# --- Bericht und Export ----------------------------------------------------
 Jinja2>=3.1.4
 matplotlib>=3.10        # ab 3.10 Wheels fuer Python 3.14
+openpyxl>=3.1           # Excel-Arbeitsmappe (fbtest export --format xlsx)
 
 # --- Optional (nicht Teil der Alpha) ---------------------------------------
 # weasyprint>=63        # PDF-Export des Berichts (benoetigt GTK unter Windows)

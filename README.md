@@ -191,27 +191,63 @@ kopieren lässt.
 
 ### Für Entwickler: aus dem Quellcode
 
-Voraussetzung: **Python 3.14** (Windows 11 oder Linux).
+Voraussetzung: **Python 3.14** (Windows 11 oder Linux). Sonst nichts – kein npm, kein
+Compiler, keine Systempakete.
+
+**Windows:**
 
 ```powershell
-cd C:\Users\Dino\Desktop\Fritzbox_Test_APP
+git clone https://github.com/Dinosaurier-io/FritzBox_Tester.git
+cd FritzBox_Tester
+.\setup.ps1
+```
 
+**Linux** (z. B. Raspberry Pi):
+
+```bash
+git clone https://github.com/Dinosaurier-io/FritzBox_Tester.git
+cd FritzBox_Tester
+./setup.sh
+```
+
+Das Skript sucht ein passendes Python, legt `.venv` an, installiert alle Abhängigkeiten,
+bindet das Projekt ein, prüft jedes Paket auf Importierbarkeit und lässt zum Schluss die
+Testsuite laufen. Es arbeitet nur mit Pfaden relativ zu sich selbst – der Ablageort und der
+Benutzername spielen keine Rolle. Ein erneuter Aufruf ist unschädlich: Eine vorhandene `.venv`
+wird weiterverwendet.
+
+| Option | Wirkung |
+|---|---|
+| `-Minimal` / `--minimal` | nur Laufzeitabhängigkeiten, ohne pytest, ruff, mypy und PyInstaller |
+| `-NoTest` / `--no-test` | überspringt die Testsuite am Ende |
+
+<details>
+<summary>Lieber von Hand</summary>
+
+```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 pip install -e .                 # macht die Befehle "fbtest" und "fbtest-app" verfügbar
 ```
 
-Unter Linux (z. B. Raspberry Pi):
-
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && pip install -e .
+pip install -r requirements-dev.txt && pip install -e .
 ```
 
-Dann wahlweise `fbtest app` (Fenster), `fbtest dashboard` (Browser) oder die
-[Kommandozeile](#bedienung).
+`requirements.txt` genügt, wenn nur ausgeführt und nicht entwickelt wird.
+
+</details>
+
+Danach wahlweise `fbtest app` (Fenster), `fbtest dashboard` (Browser) oder die
+[Kommandozeile](#bedienung). Beim ersten Start legt `fbtest init` die Ordnerstruktur und eine
+kommentierte `config.yaml` an.
+
+> **Das Passwort der FRITZ!Box gehört nicht in die `config.yaml`.** Reihenfolge der Quellen:
+> Umgebungsvariable `FRITZ_PASSWORD` → Schlüsselspeicher des Betriebssystems → (Notnagel)
+> Klartext. Am bequemsten ist das Einstellungsformular im Fenster, das schreibt in den
+> Schlüsselspeicher.
 
 ### Programmpaket selbst bauen
 

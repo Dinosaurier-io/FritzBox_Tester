@@ -1,8 +1,11 @@
 # Build-Prompt für Claude Code — FRITZ!Box Langzeit-Testsystem
 
-> **Anwendung:** Diese Datei nach `C:\Users\Dino\Desktop\Fritzbox_Test_app\BUILD_PROMPT.md` kopieren,
+> **Anwendung:** Diese Datei als `BUILD_PROMPT.md` in den (leeren) Projektordner legen,
 > dort ein Terminal öffnen, `claude` starten und eingeben:
 > `Lies BUILD_PROMPT.md und setze Phase 1 um.`
+>
+> Historisches Dokument: die ursprüngliche Aufgabenstellung, aus der das Projekt entstanden
+> ist. Was tatsächlich umgesetzt wurde, steht in der `README.md`.
 
 ---
 
@@ -20,8 +23,9 @@ Erreichbarkeit und Internetverbindung, erkennt Ausfälle sowie ungeplante Router
 protokolliert alles mit Zeitstempel und erstellt am Ende einen Testbericht. Damit sollen
 verschiedene Firmware-Versionen objektiv und reproduzierbar verglichen werden.
 
-**Zielumgebung:** Windows 11 Laptop, Projektordner `C:\Users\Dino\Desktop\Fritzbox_Test_app`
-(aktuell leer). Der Code muss zusätzlich unter Linux laufen (für den Agent-Modus auf Raspberry Pi).
+**Zielumgebung:** Windows 11 Laptop, beliebiger (aktuell leerer) Projektordner. Der Code darf
+keine absoluten Pfade annehmen und muss zusätzlich unter Linux laufen (für den Agent-Modus auf
+Raspberry Pi).
 
 ---
 
