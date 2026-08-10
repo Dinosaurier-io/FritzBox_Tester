@@ -1,0 +1,286 @@
+/* Dashboard - dunkles Theme, bewusst ohne Framework.
+   Alles handgeschrieben, damit kein npm-Build und keine CDN noetig sind:
+   Ein Werkzeug, das Internetausfaelle misst, muss offline bedienbar bleiben. */
+
+:root {
+  --bg:        #12151a;
+  --panel:     #1a1f27;
+  --panel-2:   #212833;
+  --line:      #2c3542;
+  --fg:        #e6ebf2;
+  --muted:     #8b97a8;
+  --accent:    #4da3ff;
+  --ok:        #3fb950;
+  --warn:      #d9a41a;
+  --bad:       #f0553a;
+  --radius:    10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 "Segoe UI", Roboto, system-ui, sans-serif;
+  padding-bottom: 48px;
+}
+
+/* ---------- Kopfzeile ---------- */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 16px 24px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo { font-size: 30px; }
+h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+h2 { font-size: 14px; margin: 0; font-weight: 600;
+     text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.sub { font-size: 13px; color: var(--muted); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+
+.pill {
+  font-size: 12px; padding: 3px 11px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+}
+.pill.live   { border-color: var(--ok);  color: var(--ok); }
+.pill.live::before { content: "● "; }
+.pill.idle   { border-color: var(--muted); }
+.pill.error  { border-color: var(--bad); color: var(--bad); }
+
+/* ---------- Reiter ---------- */
+.tabs { display: flex; gap: 4px; padding: 12px 24px 0; }
+.tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--muted); font: inherit; font-size: 14px;
+  padding: 8px 16px; cursor: pointer; border-radius: 6px 6px 0 0;
+}
+.tab:hover { color: var(--fg); background: var(--panel); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-panel { display: none; padding: 16px 24px; max-width: 1400px; }
+.tab-panel.active { display: block; }
+
+/* ---------- Flaechen ---------- */
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ---------- Bedienelemente ---------- */
+.control-row { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+label { display: flex; flex-direction: column; gap: 5px;
+        font-size: 12px; color: var(--muted); }
+input, select {
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 8px 11px; font: inherit; font-size: 14px; min-width: 190px;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+select { min-width: 150px; }
+
+.btn {
+  background: var(--panel-2); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 9px 16px; font: inherit; font-size: 14px; cursor: pointer;
+  white-space: nowrap; transition: border-color .15s, background .15s;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #08121d;
+               font-weight: 600; }
+.btn.danger  { background: var(--bad); border-color: var(--bad); color: #fff; font-weight: 600; }
+.btn.small   { padding: 4px 10px; font-size: 12.5px; }
+
+/* ---------- Fortschritt ---------- */
+.progress-head { display: flex; justify-content: space-between; margin-bottom: 12px; }
+.progress-head .right { text-align: right; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+.big { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar { height: 7px; background: var(--bg); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; width: 0; background: var(--accent);
+            border-radius: 999px; transition: width .8s linear; }
+
+/* ---------- Kennzahlen ---------- */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+         gap: 12px; margin-bottom: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line);
+        border-radius: var(--radius); padding: 13px 15px; }
+.card .value { font-size: 23px; font-weight: 600; margin-top: 3px;
+               font-variant-numeric: tabular-nums; }
+.card .value small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.card.ok   .value { color: var(--ok); }
+.card.warn .value { color: var(--warn); }
+.card.bad  .value { color: var(--bad); }
+.card .note { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+/* ---------- Tabellen ---------- */
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table th {
+  text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--muted);
+  padding: 6px 9px; border-bottom: 1px solid var(--line);
+}
+.table td { padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.table tr:last-child td { border-bottom: none; }
+.table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.table tr.selected { background: rgba(77, 163, 255, .1); }
+
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+       margin-right: 7px; vertical-align: 1px; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); } .dot.idle { background: var(--muted); }
+
+/* Hier standen die Regeln fuer das Live-Diagramm. Verlaeufe zeigt
+   ausschliesslich der Bericht - der bringt seine eigenen Stile mit. */
+
+/* ---------- Ereignis-Ticker ---------- */
+.ticker { max-height: 340px; overflow-y: auto; font-size: 13px; }
+.event { display: grid; grid-template-columns: 78px 150px 1fr; gap: 10px;
+         padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.event:last-child { border-bottom: none; }
+.event time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.event code { font-size: 11.5px; color: var(--muted); }
+.event.CRITICAL, .event.ERROR { color: var(--bad); }
+.event.CRITICAL code, .event.ERROR code { color: var(--bad); }
+.event.WARNING { color: var(--warn); }
+.event.WARNING code { color: var(--warn); }
+
+/* ---------- Meldungen ---------- */
+.msg { margin-top: 12px; padding: 10px 13px; border-radius: 7px; font-size: 13.5px;
+       border-left: 3px solid var(--line); background: var(--panel-2); }
+.msg.ok   { border-left-color: var(--ok); }
+.msg.warn { border-left-color: var(--warn); }
+.msg.bad  { border-left-color: var(--bad); }
+.msg .hint { color: var(--muted); font-size: 12.5px; margin-top: 5px;
+             white-space: pre-line; }
+.msg a { color: var(--accent); }
+
+.muted { color: var(--muted); font-size: 12.5px; }
+.warn-text { color: var(--warn); font-size: 12.5px; }
+
+/* Fehlerleiste - siehe reportFailure() in app.js. */
+.fatal {
+  background: var(--bad); color: #fff; padding: 12px 24px;
+  font-size: 14px; position: sticky; top: 0; z-index: 200;
+}
+.fatal .hint { color: rgba(255, 255, 255, .85); font-size: 12.5px; margin-top: 4px; }
+.hidden { display: none !important; }
+code { font-family: "Cascadia Code", Consolas, monospace; }
+
+/* ---------- Dialoge ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(6, 9, 13, .72);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 6vh 16px; overflow-y: auto;
+}
+.dialog {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 22px 24px;
+  width: 100%; max-width: 560px;
+}
+.dialog h2 { font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--fg);
+             margin-bottom: 16px; }
+.dialog > label { margin-bottom: 16px; }
+.dialog input[type="text"] { width: 100%; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.dialog .table td { font-size: 13px; }
+.dialog .table td:first-child { color: var(--muted); width: 45%; }
+
+.dialog.wide { max-width: 680px; }
+.wizard-head { margin-bottom: 18px; }
+.wizard-head h2 { margin-bottom: 12px; }
+.wizard-step p { font-size: 14px; margin: 0 0 12px; }
+.wizard-step textarea {
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 7px; padding: 8px 11px; font: inherit; font-size: 13.5px;
+  width: 100%; resize: vertical;
+}
+.wizard-step .field input { width: 100%; }
+
+.steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.step {
+  font-size: 12px; color: var(--muted);
+  padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line);
+}
+.step.active { color: var(--accent); border-color: var(--accent); }
+.step.done { color: var(--ok); border-color: var(--ok); }
+.step.done::after { content: " ✓"; }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.chip {
+  background: var(--panel-2); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 999px; padding: 5px 14px; font: inherit; font-size: 13px; cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.chip.active { background: var(--accent); border-color: var(--accent);
+               color: #08121d; font-weight: 600; }
+.chip.static { cursor: default; }
+.chip.static:hover { border-color: var(--line); }
+
+/* ---------- Einstellungsformular ---------- */
+.panel-actions { display: flex; gap: 8px; }
+
+details.section {
+  border: 1px solid var(--line); border-radius: 8px;
+  margin-top: 12px; background: var(--bg);
+}
+details.section > summary {
+  padding: 11px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
+  list-style: none;
+}
+details.section > summary::before { content: "▸ "; color: var(--muted); }
+details.section[open] > summary::before { content: "▾ "; }
+details.section > summary:hover { color: var(--accent); }
+details.section > .group { padding: 4px 16px 16px; }
+
+.group h3 {
+  font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--muted); margin: 16px 0 8px; font-weight: 600;
+}
+.field { margin-bottom: 14px; max-width: 620px; }
+.field label { flex-direction: column; }
+.field .field-name { color: var(--fg); font-size: 13px; }
+.field input:not([type="checkbox"]), .field select, .field textarea { width: 100%; }
+.field textarea {
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 7px; padding: 8px 11px; font: inherit; font-size: 13.5px;
+  resize: vertical;
+}
+.field .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.field-check label { flex-direction: row; align-items: center; gap: 9px; }
+.field-check input { width: auto; min-width: 0; }
+
+.field-error { color: var(--bad); font-size: 12px; margin-top: 4px; }
+.field.has-error input, .field.has-error select, .field.has-error textarea {
+  border-color: var(--bad);
+}
+
+.list-group { border-left: 2px solid var(--line); padding-left: 14px; }
+.list-item {
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 14px 2px; margin-bottom: 10px; background: var(--panel);
+}
+.list-item-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+
+#raw-text {
+  width: 100%; min-height: 60vh; margin-top: 10px;
+  background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 7px; padding: 12px;
+  font-family: "Cascadia Code", Consolas, monospace; font-size: 13px; line-height: 1.55;
+  resize: vertical; tab-size: 2;
+}
+
+.diag-name { color: var(--muted); width: 190px; vertical-align: top; }
+#diagnostics code { font-size: 12.5px; word-break: break-all; }

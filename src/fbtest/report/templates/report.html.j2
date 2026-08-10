@@ -1,0 +1,88 @@
+{% extends "_base.html.j2" %}
+{% block title %}Testbericht #{{ run.id }}{{ " - " ~ run.name if run.name }}{% endblock %}
+
+{% block content %}
+<h1>FRITZ!Box-Langzeittest &mdash; Bericht zu Testlauf #{{ run.id }}</h1>
+<p class="sub">{{ run.name or "ohne Namen" }}</p>
+
+<div class="meta">
+  <div><span>Router</span>{{ run.router_model or "unbekannt" }}</div>
+  <div><span>Firmware-Version</span><strong>{{ run.firmware_version or "unbekannt" }}</strong></div>
+  <div><span>Beginn</span>{{ started }}</div>
+  <div><span>Ende</span>{{ ended }}</div>
+  <div><span>Dauer</span>{{ a.duration_text }}</div>
+  <div><span>Datenpunkte</span>
+    {% for label, value in a.counts.items() %}{{ label }}: {{ "{:,}".format(value).replace(",", "'") }}{{ ", " if not loop.last }}{% endfor %}
+  </div>
+</div>
+{% if run.notes %}
+<div class="note"><strong>Notizen:</strong> {{ run.notes }}</div>
+{% endif %}
+
+<h2>Management-Summary</h2>
+<div class="cards">
+  {% for m in a.summary %}
+  <div class="card">
+    <div class="label">{{ m.label }}</div>
+    <div class="value">{{ m.value }}{% if m.unit %}<span class="unit">{{ m.unit }}</span>{% endif %}</div>
+    {% if m.hint %}<div class="hint">{{ m.hint }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<h2>Verlauf</h2>
+<figure><img src="{{ a.charts.latenz }}" alt="Latenz ueber die Zeit"></figure>
+<figure><img src="{{ a.charts.verlust }}" alt="Paketverlust ueber die Zeit"></figure>
+<figure><img src="{{ a.charts.bandbreite }}" alt="Bandbreite ueber die Zeit"></figure>
+<figure><img src="{{ a.charts.uptime }}" alt="Laufzeit von Router und WAN"></figure>
+<figure><img src="{{ a.charts.wlan }}" alt="WLAN-Signalstaerke ueber die Zeit"></figure>
+<figure><img src="{{ a.charts.latenz_verteilung }}" alt="Verteilung der Latenz"></figure>
+
+<h2>Ausfaelle ({{ a.outages | length }})</h2>
+{% if a.outages %}
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>Beginn</th><th>Ende</th><th>Dauer</th><th>Art</th><th>Einordnung</th></tr>
+  </thead>
+  <tbody>
+    {% for o in a.outages %}
+    <tr>
+      <td>{{ o.started }}</td><td>{{ o.ended }}</td><td class="num">{{ o.duration }}</td>
+      <td><code>{{ o.scope }}</code></td><td>{{ o.cause }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<div class="note">
+  <strong>Lesehilfe zur Spalte "Art":</strong>
+  <code>wan</code> = FRITZ!Box war erreichbar, das Internet nicht (Problem hinter dem Router).
+  <code>gateway</code> = die FRITZ!Box selbst antwortete nicht.
+  <code>wlan</code> = die WLAN-Verbindung des Messgeraets war getrennt.
+  <code>full</code> = weder Router noch Internet erreichbar.
+</div>
+{% else %}
+<p>Im gesamten Testzeitraum wurde kein Ausfall erkannt.</p>
+{% endif %}
+
+<h2>Ereignisse ({{ a.events | length }})</h2>
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>Zeitpunkt</th><th>Grad</th><th>Typ</th><th>Quelle</th><th>Meldung</th></tr>
+  </thead>
+  <tbody>
+    {% for e in a.events %}
+    <tr>
+      <td>{{ e.time }}</td>
+      <td class="sev-{{ e.severity }}">{{ e.severity }}</td>
+      <td><code>{{ e.type }}</code></td>
+      <td>{{ e.source }}</td>
+      <td>{{ e.message }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

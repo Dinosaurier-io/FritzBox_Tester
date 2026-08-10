@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Der Platzhalter wird beim Ausliefern durch das Sitzungs-Token ersetzt.
+     Fremde Seiten koennen ihn wegen der Same-Origin-Policy nicht auslesen. -->
+<meta name="fbtest-token" content="__FBTEST_TOKEN__">
+<title>FRITZ!Box-Langzeittest</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📡</text></svg>">
+</head>
+<body>
+
+<!-- Wird von reportFailure() in app.js sichtbar gemacht. Ein Fehler im
+     JavaScript soll eine lesbare Meldung ergeben und keine leere Fläche. -->
+<div id="fatal" class="fatal hidden"></div>
+
+<header>
+  <div class="brand">
+    <span class="logo">📡</span>
+    <div>
+      <h1>FRITZ!Box-Langzeittest</h1>
+      <div class="sub" id="headline">Verbinde …</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="pill" id="conn-pill">offline</span>
+    <span class="muted" id="version"></span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="live">Live</button>
+  <button class="tab" data-tab="runs">Testläufe</button>
+  <button class="tab" data-tab="check">Vorabprüfung</button>
+  <button class="tab" data-tab="settings">Einstellungen</button>
+</nav>
+
+<!-- ==================== LIVE ==================== -->
+<main id="tab-live" class="tab-panel active">
+
+  <section class="panel" id="control">
+    <div class="control-row" id="start-form">
+      <button class="btn primary" id="btn-start">▶ Testlauf starten …</button>
+      <span class="muted" id="start-hint">Öffnet einen Dialog mit Laufzeit und Modulübersicht.</span>
+    </div>
+    <div class="control-row hidden" id="stop-form">
+      <button class="btn danger" id="btn-stop">■ Testlauf beenden</button>
+      <span class="muted">Läuft gerade — Messungen werden beim Beenden vollständig gespeichert.</span>
+      <span class="muted" id="standby-note"></span>
+    </div>
+    <div id="control-msg"></div>
+  </section>
+
+  <section class="panel" id="progress-panel">
+    <div class="progress-head">
+      <div>
+        <div class="label">Fortschritt</div>
+        <div class="big" id="elapsed">–</div>
+      </div>
+      <div class="right">
+        <div class="label">Restzeit</div>
+        <div class="big" id="remaining">–</div>
+      </div>
+    </div>
+    <div class="bar"><div class="bar-fill" id="progress-bar"></div></div>
+  </section>
+
+  <section class="cards" id="kpis"></section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Ping-Ziele</h2>
+        <span class="muted">Klassifikation eines Ausfalls</span>
+      </div>
+      <table class="table" id="targets"><tbody></tbody></table>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Module</h2><span class="muted">Supervisor</span></div>
+      <table class="table" id="modules"><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Datenverkehr</h2>
+        <span class="muted" id="traffic-note"></span>
+      </div>
+      <table class="table" id="traffic">
+        <thead><tr>
+          <th>Profil</th><th class="num">übertragen</th><th class="num">aktuell</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Bandbreite</h2>
+        <span class="muted">periodische Messung</span>
+      </div>
+      <table class="table" id="speedtest"><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Ereignisse</h2><span class="muted">neueste zuerst</span></div>
+    <div class="ticker" id="events"></div>
+  </section>
+</main>
+
+<!-- ==================== TESTLÄUFE ==================== -->
+<main id="tab-runs" class="tab-panel">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Gespeicherte Testläufe</h2>
+      <button class="btn" id="btn-compare" disabled>Zwei markierte vergleichen</button>
+    </div>
+    <table class="table" id="runs">
+      <thead><tr>
+        <th></th><th>ID</th><th>Name</th><th>Firmware</th><th>Beginn</th>
+        <th class="num">Dauer</th><th class="num">Messwerte</th><th class="num">Ausfälle</th>
+        <th>Status</th><th>Aktionen</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <div id="runs-msg"></div>
+  </section>
+</main>
+
+<!-- ==================== VORABPRÜFUNG ==================== -->
+<main id="tab-check" class="tab-panel">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Vorabprüfung</h2>
+      <button class="btn primary" id="btn-check">Prüfung ausführen</button>
+    </div>
+    <p class="muted">
+      Prüft FRITZ!Box, TR-064, Ping-Ziele, DNS, Testserver, WLAN und Speicherplatz —
+      dieselben Prüfungen wie <code>fbtest check</code>.
+    </p>
+    <div id="check-results"></div>
+  </section>
+</main>
+
+<!-- ==================== EINSTELLUNGEN ==================== -->
+<main id="tab-settings" class="tab-panel">
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>FRITZ!Box-Passwort</h2>
+      <span class="muted" id="secret-account"></span>
+    </div>
+    <div class="control-row">
+      <label>Neues Passwort
+        <input type="password" id="secret-input" autocomplete="new-password"
+               placeholder="wird im Schlüsselspeicher abgelegt">
+      </label>
+      <button class="btn primary" id="btn-secret-save">Speichern</button>
+      <button class="btn" id="btn-secret-delete">Entfernen</button>
+    </div>
+    <div id="secret-msg"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Konfiguration</h2>
+      <div class="panel-actions">
+        <button class="btn small" id="btn-raw-toggle">Rohansicht</button>
+        <button class="btn small" id="btn-settings-reload">Verwerfen</button>
+        <button class="btn primary small" id="btn-settings-save">Speichern</button>
+      </div>
+    </div>
+    <div class="muted" id="settings-path"></div>
+    <div id="settings-msg"></div>
+
+    <div id="settings-form"></div>
+
+    <div id="settings-raw" class="hidden">
+      <p class="muted">
+        Die Datei im Original. Beim Speichern wird sie zuerst geprüft — eine
+        ungültige Konfiguration wird nicht geschrieben.
+      </p>
+      <textarea id="raw-text" spellcheck="false"></textarea>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Diagnose</h2></div>
+    <table class="table" id="diagnostics"><tbody></tbody></table>
+  </section>
+</main>
+
+<!-- ==================== DIALOGE ==================== -->
+<div class="overlay hidden" id="dialog-start">
+  <div class="dialog">
+    <h2>Testlauf starten</h2>
+    <label>Name
+      <input type="text" id="run-name" placeholder="z. B. FRITZ!OS 8.02" autocomplete="off">
+    </label>
+    <div class="field">
+      <div class="label">Laufzeit</div>
+      <div class="chips" id="duration-presets">
+        <button class="chip" data-value="1h">1 Stunde</button>
+        <button class="chip" data-value="8h">8 Stunden</button>
+        <button class="chip active" data-value="24h">24 Stunden</button>
+        <button class="chip" data-value="72h">72 Stunden</button>
+      </div>
+      <input type="text" id="run-duration" value="24h" autocomplete="off">
+      <div class="muted">Frei wählbar: <code>30m</code>, <code>12h</code>, <code>3d</code></div>
+    </div>
+
+    <div class="field">
+      <div class="label">Aktive Module</div>
+      <div id="module-preview" class="muted">…</div>
+    </div>
+
+    <div id="start-check"></div>
+    <div class="dialog-actions">
+      <button class="btn" data-close>Abbrechen</button>
+      <button class="btn primary" id="btn-start-confirm">Starten</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="dialog-setup">
+  <div class="dialog wide">
+    <div class="wizard-head">
+      <h2 id="setup-title">Einrichtung</h2>
+      <div class="steps" id="setup-steps"></div>
+    </div>
+
+    <!-- 1 Willkommen -->
+    <section class="wizard-step" data-step="0">
+      <p>Dieses Programm prüft eine FRITZ!Box über Stunden bis Tage auf Stabilität:
+         Es erzeugt Datenverkehr, misst durchgehend die Erreichbarkeit, erkennt Ausfälle
+         und ungeplante Router-Neustarts und erstellt am Ende einen Bericht.</p>
+      <p class="muted">Die Einrichtung dauert etwa zwei Minuten. Alles lässt sich später
+         unter „Einstellungen" ändern.</p>
+      <div class="msg" id="setup-location"></div>
+    </section>
+
+    <!-- 2 FRITZ!Box -->
+    <section class="wizard-step hidden" data-step="1">
+      <div class="field">
+        <label><span class="field-name">IP-Adresse der FRITZ!Box</span>
+          <input type="text" id="setup-host" autocomplete="off"></label>
+        <div class="hint" id="setup-host-hint">wird ermittelt …</div>
+      </div>
+      <div class="field">
+        <label><span class="field-name">Benutzername</span>
+          <input type="text" id="setup-user" autocomplete="off" placeholder="leer lassen, falls keiner"></label>
+        <div class="hint">In der FRITZ!Box unter <em>System → FRITZ!Box-Benutzer</em>.
+          Manche Boxen arbeiten nur mit Kennwort – dann leer lassen.</div>
+      </div>
+      <div class="field">
+        <label><span class="field-name">Passwort</span>
+          <input type="password" id="setup-password" autocomplete="new-password"></label>
+        <div class="hint">Wird im Schlüsselspeicher des Systems abgelegt, nicht in einer Datei.
+          Ohne Passwort läuft der Test – aber ohne Router-Laufzeit und
+          <strong>ohne Neustart-Erkennung</strong>.</div>
+      </div>
+      <div class="msg warn">
+        Damit das funktioniert, muss in der FRITZ!Box unter
+        <em>Heimnetz → Netzwerk → Netzwerkeinstellungen</em> die Option
+        <strong>„Zugriff für Anwendungen zulassen"</strong> aktiviert sein.
+      </div>
+    </section>
+
+    <!-- 3 Ping-Ziele -->
+    <section class="wizard-step hidden" data-step="2">
+      <p class="muted">Diese Adressen werden laufend angepingt. Aus dem Muster der Ausfälle
+         schliesst das System, <strong>wo</strong> das Problem liegt: nur im Internet, an der
+         Box oder am WLAN dieses Rechners.</p>
+      <div class="field">
+        <label><span class="field-name">Internet-Ziele (eine Adresse je Zeile)</span>
+          <textarea id="setup-targets" rows="4"></textarea></label>
+        <div class="hint">Die FRITZ!Box selbst wird automatisch als Gateway-Ziel ergänzt.</div>
+      </div>
+    </section>
+
+    <!-- 4 Prüfung -->
+    <section class="wizard-step hidden" data-step="3">
+      <p class="muted">Die Einstellungen werden gespeichert und anschliessend geprüft.</p>
+      <div id="setup-result"></div>
+    </section>
+
+    <div class="dialog-actions">
+      <button class="btn" id="setup-back">Zurück</button>
+      <button class="btn primary" id="setup-next">Weiter</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="dialog-resume">
+  <div class="dialog">
+    <h2>Abgebrochener Testlauf gefunden</h2>
+    <p id="resume-text" class="muted"></p>
+    <table class="table" id="resume-details"><tbody></tbody></table>
+    <p class="muted">
+      Fortsetzen ist sinnvoll, wenn die Lücke kurz ist. Bei einer langen Lücke
+      werden sonst zwei Messreihen zusammengeklebt, die nichts miteinander zu tun haben.
+    </p>
+    <div class="dialog-actions">
+      <button class="btn danger" id="btn-resume-discard">Verwerfen</button>
+      <button class="btn" id="btn-resume-close">Als beendet markieren</button>
+      <button class="btn primary" id="btn-resume-continue">Fortsetzen</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/chart.js"></script>
+<!-- app.js zuerst: settings.js nutzt dessen Helfer ($, api, showMessage). -->
+<script src="/static/app.js"></script>
+<script src="/static/settings.js"></script>
+<script src="/static/setup.js"></script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fbtest"
+version = "0.1.0a1"
+description = "Automatisiertes Langzeit-Testsystem fuer FRITZ!Box-Router"
+readme = "README.md"
+requires-python = ">=3.14"
+license = "MIT"
+authors = [{ name = "Dino Tonet" }]
+
+dependencies = [
+    "pydantic>=2.12",
+    "PyYAML>=6.0.2",
+    "ruamel.yaml>=0.18",
+    "keyring>=25",
+    "typer>=0.15",
+    "rich>=13.9",
+    "httpx>=0.28",
+    "icmplib>=3.0.4",
+    "fritzconnection>=1.14",
+    "Jinja2>=3.1.4",
+    "openpyxl>=3.1",
+    "matplotlib>=3.10",
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "pywebview>=5.3",
+    "pystray>=0.19",
+    "Pillow>=11",
+]
+
+[project.scripts]
+fbtest = "fbtest.__main__:app"
+
+# Ohne Konsolenfenster - der Einstieg der gebuendelten Desktop-Anwendung.
+[project.gui-scripts]
+fbtest-app = "fbtest.__main__:gui"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+fbtest = ["report/templates/*.j2", "dashboard/static/*", "resources/*.yaml"]
+
+# --------------------------------------------------------------------------
+# Ruff - Linting und Formatierung
+# --------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "N",        # pep8-naming
+    "UP",       # pyupgrade
+    "B",        # bugbear
+    "A",        # builtins shadowing
+    "C4",       # comprehensions
+    "SIM",      # simplify
+    "PTH",      # pathlib statt os.path
+    "RUF",
+]
+ignore = [
+    "B008",   # typer nutzt Funktionsaufrufe als Default-Werte
+    "RUF001", # deutsche Umlaute/Sonderzeichen in Strings sind gewollt
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+# --------------------------------------------------------------------------
+# mypy - strict fuer core/ und storage/
+# --------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.14"
+mypy_path = "src"
+packages = ["fbtest"]
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["fbtest.core.*", "fbtest.storage.*"]
+strict = true
+
+# Die matplotlib-Typstubs kennen keine datetime-Achsen, obwohl matplotlib sie
+# ausdruecklich unterstuetzt. Statt jeden Aufruf einzeln zu ignorieren, wird die
+# Pruefung fuer dieses eine Modul gezielt gelockert.
+[[tool.mypy.overrides]]
+module = ["fbtest.report.charts"]
+disable_error_code = ["arg-type", "no-untyped-call"]
+
+# --------------------------------------------------------------------------
+# pytest
+# --------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+addopts = "-q"

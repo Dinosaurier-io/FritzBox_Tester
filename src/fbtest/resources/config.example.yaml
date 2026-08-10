@@ -1,0 +1,324 @@
+# ============================================================================
+#  FRITZ!Box Langzeit-Testsystem - Beispielkonfiguration
+# ============================================================================
+#  Kopie dieser Datei als "config.yaml" anlegen (macht "fbtest init"
+#  automatisch) und anpassen. Die config.yaml ist bewusst NICHT im Git -
+#  sie kann Zugangsdaten enthalten.
+#
+#  Dauerangaben mit Einheit sind ueberall dort erlaubt, wo es im Kommentar
+#  steht: 30s, 15m, 24h, 3d.
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# ROUTER - Zugang zur FRITZ!Box ueber TR-064
+# ----------------------------------------------------------------------------
+# Voraussetzung in der FRITZ!Box-Oberflaeche:
+#   Heimnetz -> Netzwerk -> Netzwerkeinstellungen
+#   -> "Zugriff fuer Anwendungen zulassen" aktivieren
+#   System -> FRITZ!Box-Benutzer -> Benutzer mit den noetigen Rechten anlegen
+router:
+  # IP-Adresse oder Hostname der Box.
+  host: 192.168.178.1
+
+  # Benutzername des angelegten FRITZ!Box-Benutzers.
+  # Leer lassen, wenn die Box ohne Benutzernamen (nur mit Passwort) arbeitet.
+  username: ""
+
+  # PASSWORT NIEMALS HIER EINTRAGEN, wenn die Datei geteilt wird.
+  # Bevorzugter Weg ist die Umgebungsvariable unten:
+  #   PowerShell:  $env:FRITZ_PASSWORD = 'dein-passwort'
+  #   Linux:       export FRITZ_PASSWORD='dein-passwort'
+  password: ""
+  password_env: FRITZ_PASSWORD
+
+  # TR-064 ueber HTTPS statt HTTP (Port 49443 statt 49000).
+  use_tls: false
+  port: null
+
+  # Timeout eines einzelnen TR-064-Aufrufs in Sekunden.
+  timeout_s: 5.0
+
+  # Abstand zwischen zwei Router-Abfragen. Kuerzer = genauerer Neustart-
+  # Zeitpunkt, aber mehr Last auf der Box. 10 s sind ein guter Kompromiss.
+  poll_interval_s: 10.0
+
+
+# ----------------------------------------------------------------------------
+# PING - Erreichbarkeit, Latenz, Paketverlust, Ausfallerkennung
+# ----------------------------------------------------------------------------
+ping:
+  enabled: true
+
+  # Abstand zwischen zwei Pings JE ZIEL.
+  interval_s: 1.0
+
+  # Timeout eines einzelnen Pings.
+  timeout_s: 1.0
+
+  # Fenstergroesse fuer die Aggregation (min/avg/max/p95/Jitter/Verlust).
+  # Statt jeder einzelne Ping wird nur ein verdichteter Wert je Fenster
+  # gespeichert - das haelt die Datenbank auch nach Tagen handlich.
+  aggregate_window_s: 60.0
+
+  # Nach so vielen Fehlschlaegen HINTEREINANDER gilt ein Ziel als ausgefallen.
+  # 3 filtert einzelne verlorene Pakete heraus, reagiert aber noch schnell.
+  outage_threshold: 3
+
+  # icmplib misst praeziser, braucht aber Rechte fuer Raw-Sockets
+  # (Windows: Administrator). Ohne diese Rechte wird automatisch auf das
+  # System-Kommando "ping" umgeschaltet - das steht dann auch im Log.
+  prefer_icmplib: true
+
+  # true = jeder einzelne Ping wird gespeichert (sehr viele Zeilen:
+  # ca. 260'000 pro Tag und Ziel). Fuer normale Laeufe nicht noetig.
+  store_raw_samples: false
+
+  # Die Ziele. "scope" steuert die Ausfall-Klassifikation:
+  #   gateway  = die FRITZ!Box selbst
+  #   internet = ein Ziel ausserhalb des eigenen Netzes
+  #   lan      = ein anderes Geraet im eigenen Netz
+  # Antwortet das Gateway, das Internet aber nicht -> Problem hinter dem
+  # Router (scope=wan). Antwortet auch das Gateway nicht -> Problem davor.
+  targets:
+    - name: fritzbox
+      host: 192.168.178.1
+      scope: gateway
+    - name: cloudflare
+      host: 1.1.1.1
+      scope: internet
+    - name: google
+      host: 8.8.8.8
+      scope: internet
+
+  # DNS wird getrennt gemessen: Eine langsame Namensaufloesung fuehlt sich
+  # wie "das Internet ist langsam" an, hat mit der Leitung aber nichts zu tun.
+  dns:
+    enabled: true
+    interval_s: 30.0
+    timeout_s: 5.0
+    hostnames:
+      - www.google.com
+      - www.sbb.ch
+
+
+# ----------------------------------------------------------------------------
+# TRAFFIC - kuenstlich erzeugte Last
+# ----------------------------------------------------------------------------
+# Jedes Profil laeuft als eigener "virtueller Client" mit eigener Statistik.
+# "clients" vervielfacht das Profil (z.B. 3 gleichzeitige Surfer).
+# "target_rate_mbps" begrenzt die Rate JE CLIENT; 0 = unbegrenzt.
+#
+# WICHTIG: Nur oeffentliche Endpunkte verwenden, die ausdruecklich fuer
+# Bandbreitentests gedacht sind, oder einen eigenen Server im LAN.
+traffic:
+  enabled: true
+
+  # Wartezeit nach einem Netzwerkfehler, verdoppelt sich bis backoff_max_s.
+  backoff_start_s: 1.0
+  backoff_max_s: 60.0
+
+  profiles:
+    # --- Surfen simulieren: kleine Requests, misst TTFB und Gesamtzeit ------
+    - name: surfen
+      type: web
+      enabled: true
+      clients: 2
+      interval_s: 15.0
+      urls:
+        - https://www.ethz.ch/
+        - https://www.admin.ch/
+        - https://www.ch.ch/de
+
+    # --- Videostream simulieren: konstante Rate, erkennt Einbrueche ---------
+    - name: stream-hd
+      type: streaming
+      enabled: true
+      clients: 1
+      target_rate_mbps: 5.0
+      url: https://proof.ovh.net/files/100Mb.dat
+      # Faellt die erreichte Rate unter diesen Anteil der Zielrate,
+      # wird ein STREAM_STALL-Ereignis erzeugt.
+      stall_threshold_pct: 60.0
+      stall_window_s: 5.0
+
+    # --- Dauerdownload mit begrenzter Rate ----------------------------------
+    - name: dauerdownload
+      type: download
+      enabled: true
+      clients: 1
+      target_rate_mbps: 10.0
+      url: https://proof.ovh.net/files/100Mb.dat
+
+    # --- Upload: standardmaessig AUS, da ein passender Endpunkt noetig ist ---
+    # httpbin akzeptiert POST, ist aber kein Bandbreiten-Testserver.
+    # Fuer echte Upload-Last einen eigenen nginx/Server im LAN eintragen.
+    - name: upload
+      type: upload
+      enabled: false
+      clients: 1
+      target_rate_mbps: 2.0
+      chunk_size_kb: 256
+      url: https://httpbin.org/post
+
+    # --- Reiner LAN-Durchsatz gegen einen iperf3-Server (optional) ----------
+    # Misst ohne WAN-Einfluss. Setzt voraus, dass irgendwo im LAN
+    # "iperf3 -s" laeuft und iperf3 lokal installiert ist.
+    - name: lan-durchsatz
+      type: lan_iperf
+      enabled: false
+      clients: 1
+      server: 192.168.178.30
+      port: 5201
+      duration_s: 10.0
+      interval_s: 300.0
+      reverse: false
+
+
+# ----------------------------------------------------------------------------
+# SPEEDTEST - periodische WAN-Bandbreitenmessung
+# ----------------------------------------------------------------------------
+speedtest:
+  enabled: true
+
+  # Abstand zwischen zwei Messungen (1800 s = 30 min).
+  interval_s: 1800.0
+
+  # Testdatei fuer den Download. Immer dieselbe Datei verwenden - nur so sind
+  # Ergebnisse ueber Tage hinweg vergleichbar. Alternativen:
+  #   http://ipv4.download.thinkbroadband.com/100MB.zip
+  #   ein eigener nginx im LAN (misst dann allerdings nicht das WAN)
+  download_url: https://proof.ovh.net/files/100Mb.dat
+
+  # Leer lassen = Upload-Messung ueberspringen.
+  upload_url: ""
+  upload_size_mb: 20
+
+  # Anzahl paralleler Verbindungen (eine einzelne TCP-Verbindung schoepft
+  # schnelle Anschluesse nicht aus).
+  connections: 4
+
+  # Slow-Start-Phase, die nicht gewertet wird, und das eigentliche Messfenster.
+  warmup_s: 3.0
+  measure_duration_s: 10.0
+
+  # Ziel fuer die Latenzmessung unter Last (Bufferbloat-Indikator).
+  latency_host: 1.1.1.1
+
+  # Traffic-Profile waehrend der Messung pausieren. Dringend empfohlen -
+  # sonst misst der Speedtest den eigenen Hintergrundverkehr mit.
+  pause_traffic: true
+
+
+# ----------------------------------------------------------------------------
+# WLAN - Ueberwachung aus Router- und Clientsicht
+# ----------------------------------------------------------------------------
+wlan:
+  enabled: true
+  interval_s: 30.0
+
+  # Router-Sicht ueber TR-064: Baender, Kanaele, angemeldete Geraete, RSSI.
+  router_view: true
+
+  # Client-Sicht: was der Laptop selbst sieht (Windows: netsh, Linux: iw).
+  client_view: true
+
+  # Leer = automatisch erkennen. Unter Linux z.B. "wlan0".
+  interface: ""
+
+  # --- Bandwechsel-Test ---------------------------------------------------
+  # ACHTUNG: Setzt GETRENNTE SSIDs je Band voraus. Die FRITZ!Box verwendet
+  # standardmaessig fuer 2,4 und 5 GHz dieselbe SSID (Band-Steering) - dann
+  # entscheidet die Box, auf welchem Band der Client landet, und eine gezielte
+  # Bandwahl ist technisch nicht moeglich.
+  # Zum Aktivieren: WLAN -> Funknetz -> "Gleicher Name fuer 2,4 und 5 GHz"
+  # abwaehlen, dann beide Netze einmal manuell im Betriebssystem verbinden.
+  band_switch_enabled: false
+  band_switch_interval_s: 900.0
+  profiles:
+    - band: "2.4GHz"
+      profile_name: MeinWLAN-24
+      ssid: MeinWLAN-24
+    - band: "5GHz"
+      profile_name: MeinWLAN-5
+      ssid: MeinWLAN-5
+
+
+# ----------------------------------------------------------------------------
+# TESTLAUF
+# ----------------------------------------------------------------------------
+run:
+  # Gesamtdauer. Auf der Kommandozeile mit --duration ueberschreibbar.
+  duration_s: 24h
+
+  # Name des Laufs - am besten die Firmware-Version, dann ist der spaetere
+  # Vergleich selbsterklaerend. Ueberschreibbar mit --name.
+  name: ""
+  notes: ""
+
+  # Nach einem Absturz oder Stromausfall den offenen Testlauf fortsetzen,
+  # statt einen neuen zu beginnen. Die Luecke wird als SYSTEM_GAP protokolliert.
+  resume_open_run: true
+
+  # Groessere Zeitspruenge gelten als Standby des Rechners und werden
+  # ausdruecklich NICHT als Router-Ausfall gewertet.
+  time_gap_threshold_s: 120.0
+
+  # Waehrend des Testlaufs den Energiesparmodus unterdruecken (Windows-
+  # Energieverwaltung bzw. systemd-inhibit). Ein Test ueber 24 Stunden ist
+  # wertlos, wenn der Rechner nach 30 Minuten schlafen geht. Der Bildschirm
+  # darf trotzdem ausgehen - er wird fuer die Messung nicht gebraucht.
+  prevent_standby: true
+
+
+# ----------------------------------------------------------------------------
+# SPEICHERUNG
+# ----------------------------------------------------------------------------
+storage:
+  data_dir: data        # SQLite-Datenbank (alle Testlaeufe in einer Datei)
+  export_dir: exports   # CSV-/JSON-Exporte
+  report_dir: reports   # erzeugte HTML-Berichte
+  log_dir: logs         # rotierende Logdateien
+
+  # Messwerte werden gesammelt und nur alle paar Sekunden geschrieben -
+  # statt tausender Einzel-Commits.
+  batch_interval_s: 5.0
+  batch_max_rows: 500
+
+
+# ----------------------------------------------------------------------------
+# LOGGING
+# ----------------------------------------------------------------------------
+logging:
+  level: INFO           # DEBUG, INFO, WARNING oder ERROR
+  max_bytes: 10485760   # 10 MB je Logdatei
+  backup_count: 5       # danach wird rotiert (maximal ca. 60 MB gesamt)
+
+
+# ----------------------------------------------------------------------------
+# DASHBOARD  (fbtest dashboard)
+# ----------------------------------------------------------------------------
+dashboard:
+  enabled: false        # ohne Wirkung - das Dashboard wird per Befehl gestartet
+  host: 127.0.0.1       # NICHT auf 0.0.0.0 setzen: es gibt keine Anmeldung
+  port: 8080
+
+
+# ----------------------------------------------------------------------------
+# DESKTOP-ANWENDUNG  (fbtest app)
+# ----------------------------------------------------------------------------
+desktop:
+  # Fenster schliessen minimiert in den Infobereich, statt zu beenden.
+  # Bei einem LAUFENDEN Testlauf geschieht das ohnehin immer - ein
+  # versehentlicher Klick darf keine Messung von 72 Stunden vernichten.
+  minimize_to_tray: true
+
+  # Systemmeldungen bei Router-Neustart und laengeren Ausfaellen.
+  notifications: true
+
+  # Ab dieser Ausfalldauer wird gemeldet. Kuerzere Aussetzer sind Messwerte,
+  # keine Ereignisse, die jemanden wecken muessen.
+  notify_outage_after_s: 60.0
+
+  window_width: 1280
+  window_height: 860

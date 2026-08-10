@@ -1,0 +1,34 @@
+# FRITZ!Box Langzeit-Testsystem - Laufzeitabhaengigkeiten
+# Zielplattform: Python 3.14 (Windows 11 + Linux)
+# Installation:  pip install -r requirements.txt
+
+# --- Konfiguration ---------------------------------------------------------
+pydantic>=2.12          # ab 2.12 offiziell fuer Python 3.14 gebaut
+PyYAML>=6.0.2           # Lesen der Konfiguration
+ruamel.yaml>=0.18       # Schreiben unter Erhalt der Kommentare (Einstellungsdialog)
+keyring>=25             # Passwort im Schluesselspeicher des Betriebssystems
+
+# --- CLI / Ausgabe ---------------------------------------------------------
+typer>=0.15
+rich>=13.9
+
+# --- Netzwerk --------------------------------------------------------------
+httpx>=0.28             # asynchrone HTTP-Requests fuer Traffic und Speedtest
+icmplib>=3.0.4          # ICMP ohne Subprocess (Fallback: System-Ping)
+fritzconnection>=1.14   # TR-064-Zugriff auf die FRITZ!Box
+
+# --- Dashboard -------------------------------------------------------------
+fastapi>=0.115         # Web-Dashboard (fbtest dashboard)
+uvicorn>=0.34          # ASGI-Server dafuer
+
+# --- Desktop-Anwendung -----------------------------------------------------
+pywebview>=5.3          # nativer Fensterrahmen (Windows: WebView2)
+pystray>=0.19           # Symbol im Infobereich
+Pillow>=11              # zeichnet die Programmsymbole
+
+# --- Bericht ---------------------------------------------------------------
+Jinja2>=3.1.4
+matplotlib>=3.10        # ab 3.10 Wheels fuer Python 3.14
+
+# --- Optional (nicht Teil der Alpha) ---------------------------------------
+# weasyprint>=63        # PDF-Export des Berichts (benoetigt GTK unter Windows)

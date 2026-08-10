@@ -1,0 +1,86 @@
+{# Gemeinsames Grundgeruest aller Berichte: Layout, Druckstile, Farbschema. #}
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}FRITZ!Box-Testbericht{% endblock %}</title>
+<style>
+  :root {
+    --fg: #1c1e21;
+    --muted: #5c6470;
+    --line: #d9dee5;
+    --bg: #ffffff;
+    --panel: #f6f8fa;
+    --ok: #1a7f37;
+    --warn: #9a6700;
+    --bad: #b42318;
+    --accent: #10508c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--fg); background: var(--bg);
+    margin: 0; padding: 32px; line-height: 1.5; font-size: 15px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 19px; margin: 36px 0 12px; padding-bottom: 6px;
+       border-bottom: 2px solid var(--line); }
+  h3 { font-size: 15px; margin: 20px 0 8px; color: var(--muted); }
+  .sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  .meta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px 24px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 6px; padding: 16px 20px; margin-bottom: 8px;
+  }
+  .meta div { font-size: 14px; }
+  .meta span { display: block; color: var(--muted); font-size: 12px;
+               text-transform: uppercase; letter-spacing: .4px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+           gap: 12px; margin: 16px 0 8px; }
+  .card { border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px;
+          background: var(--bg); }
+  .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase;
+                 letter-spacing: .4px; }
+  .card .value { font-size: 22px; font-weight: 600; margin-top: 2px; }
+  .card .unit { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+  .card .hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin-top: 8px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 9px; text-align: left;
+           vertical-align: top; }
+  th { background: var(--panel); font-weight: 600; position: sticky; top: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 620px; overflow: auto; border: 1px solid var(--line);
+            border-radius: 6px; }
+  figure { margin: 18px 0; }
+  figure img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+  .sev-CRITICAL, .sev-ERROR { color: var(--bad); font-weight: 600; }
+  .sev-WARNING { color: var(--warn); font-weight: 600; }
+  .sev-INFO, .sev-DEBUG { color: var(--muted); }
+  .v-besser { color: var(--ok); font-weight: 600; }
+  .v-schlechter { color: var(--bad); font-weight: 600; }
+  .v-gleich, .v-na, .v-neutral { color: var(--muted); }
+  .note { background: var(--panel); border-left: 3px solid var(--accent);
+          padding: 10px 14px; margin: 14px 0; font-size: 13.5px; border-radius: 0 4px 4px 0; }
+  footer { margin-top: 42px; padding-top: 12px; border-top: 1px solid var(--line);
+           color: var(--muted); font-size: 12px; }
+  @media print {
+    body { padding: 0; font-size: 11pt; }
+    h2 { page-break-after: avoid; }
+    figure, .card, tr { page-break-inside: avoid; }
+    .scroll { max-height: none; overflow: visible; border: none; }
+    th { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+{% block content %}{% endblock %}
+<footer>
+  Erzeugt am {{ generated }} mit fbtest {{ version }} &mdash; FRITZ!Box-Langzeittestsystem.
+  Alle Zeitangaben in lokaler Zeit, alle Rohdaten zusaetzlich als UTC in der Datenbank.
+</footer>
+</div>
+</body>
+</html>

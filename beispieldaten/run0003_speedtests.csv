@@ -1,0 +1,2 @@
+﻿id;test_run_id;ts;ts_iso;source;down_mbps;up_mbps;latency_idle_ms;latency_loaded_ms
+2;3;1785915224.5957932;2026-08-05T07:33:44.595+00:00;master;25.0440664135421;;4.9869537353515625;6.57048225402832

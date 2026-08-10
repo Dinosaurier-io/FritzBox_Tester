@@ -1,0 +1,91 @@
+{% extends "_base.html.j2" %}
+{% block title %}Vergleich Testlauf #{{ a.run.id }} / #{{ b.run.id }}{% endblock %}
+
+{% block content %}
+<h1>Firmware-Vergleich &mdash; Testlauf #{{ a.run.id }} gegen #{{ b.run.id }}</h1>
+<p class="sub">
+  {{ a.run.firmware_version or "Firmware unbekannt" }} &nbsp;&rarr;&nbsp;
+  {{ b.run.firmware_version or "Firmware unbekannt" }}
+</p>
+
+<div class="meta">
+  <div><span>Referenzlauf (A)</span>#{{ a.run.id }} &mdash; {{ a.run.name or "ohne Namen" }}<br>
+       {{ a.run.firmware_version or "?" }}, {{ a.duration_text }}</div>
+  <div><span>Vergleichslauf (B)</span>#{{ b.run.id }} &mdash; {{ b.run.name or "ohne Namen" }}<br>
+       {{ b.run.firmware_version or "?" }}, {{ b.duration_text }}</div>
+  <div><span>Router</span>{{ a.run.router_model or "?" }} / {{ b.run.router_model or "?" }}</div>
+</div>
+
+{% if a.run.duration_s and b.run.duration_s and
+      (a.run.duration_s / b.run.duration_s > 1.25 or b.run.duration_s / a.run.duration_s > 1.25) %}
+<div class="note">
+  <strong>Achtung:</strong> Die beiden Laeufe sind unterschiedlich lang
+  ({{ a.duration_text }} gegenueber {{ b.duration_text }}). Absolute Zaehlwerte wie
+  "Anzahl Ausfaelle" sind dadurch nur eingeschraenkt vergleichbar &mdash; die
+  relativen Kennzahlen (Verfuegbarkeit, Latenz, Verlust) bleiben aussagekraeftig.
+</div>
+{% endif %}
+
+<h2>Kennzahlen im direkten Vergleich</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Kennzahl</th>
+      <th class="num">A &mdash; #{{ a.run.id }}</th>
+      <th class="num">B &mdash; #{{ b.run.id }}</th>
+      <th class="num">Differenz</th>
+      <th>Bewertung</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.label }}{% if r.unit %} <span style="color:#5c6470">({{ r.unit }})</span>{% endif %}</td>
+      <td class="num">{{ r.value_a }}</td>
+      <td class="num">{{ r.value_b }}</td>
+      <td class="num">{{ r.delta }}</td>
+      <td class="v-{{ r.verdict | replace('n/a', 'na') }}">
+        {% if r.verdict == 'besser' %}B ist besser
+        {% elif r.verdict == 'schlechter' %}B ist schlechter
+        {% elif r.verdict == 'gleich' %}unveraendert
+        {% elif r.verdict == 'neutral' %}ohne Wertung
+        {% else %}nicht vergleichbar{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="note">
+  Die Bewertung bezieht sich immer auf Lauf <strong>B</strong> gegenueber Lauf
+  <strong>A</strong>. Bei Kennzahlen wie Latenz, Verlust oder Anzahl Ausfaelle
+  ist ein kleinerer Wert besser, bei Verfuegbarkeit und Bandbreite ein groesserer.
+</div>
+
+<h2>Overlay-Diagramme</h2>
+<figure><img src="{{ overlays.latenz }}" alt="Latenz im Vergleich"></figure>
+<figure><img src="{{ overlays.verlust }}" alt="Paketverlust im Vergleich"></figure>
+<figure><img src="{{ overlays.verfuegbarkeit }}" alt="Verfuegbarkeit im Vergleich"></figure>
+<figure><img src="{{ overlays.ausfaelle }}" alt="Anzahl Ausfaelle im Vergleich"></figure>
+<figure><img src="{{ overlays.neustarts }}" alt="Ungeplante Neustarts im Vergleich"></figure>
+
+<h2>Ausfaelle je Lauf</h2>
+<h3>Lauf A &mdash; #{{ a.run.id }} ({{ a.outages | length }} Ausfaelle)</h3>
+{% if a.outages %}
+<table>
+  <thead><tr><th>Beginn</th><th>Dauer</th><th>Art</th></tr></thead>
+  <tbody>
+    {% for o in a.outages %}<tr><td>{{ o.started }}</td><td class="num">{{ o.duration }}</td><td><code>{{ o.scope }}</code></td></tr>{% endfor %}
+  </tbody>
+</table>
+{% else %}<p>Keine Ausfaelle.</p>{% endif %}
+
+<h3>Lauf B &mdash; #{{ b.run.id }} ({{ b.outages | length }} Ausfaelle)</h3>
+{% if b.outages %}
+<table>
+  <thead><tr><th>Beginn</th><th>Dauer</th><th>Art</th></tr></thead>
+  <tbody>
+    {% for o in b.outages %}<tr><td>{{ o.started }}</td><td class="num">{{ o.duration }}</td><td><code>{{ o.scope }}</code></td></tr>{% endfor %}
+  </tbody>
+</table>
+{% else %}<p>Keine Ausfaelle.</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+# --- Geheimnisse und lokale Konfiguration ---------------------------------
+config.yaml
+.env
+.claude/settings.local.json
+
+# --- Nicht fuer die Oeffentlichkeit ---------------------------------------
+# Die Rohexporte enthalten die selbst vergebenen WLAN-Namen und die
+# MAC-Adressen der angemeldeten Geraete. Eine anonymisierte Fassung liegt
+# stattdessen unter beispieldaten/.
+Wlan_LAN Tests/
+# Praesentationsunterlagen mit internen Kennzahlen (Aufwand, Kosten).
+praesentation/
+
+# --- Laufzeitdaten (nie ins Repository) -----------------------------------
+data/
+logs/
+exports/
+reports/
+
+# --- Erzeugte Dateien -----------------------------------------------------
+# Die Symbole werden von 'build_icons()' gezeichnet, das Programmpaket von
+# PyInstaller gebaut. Beides gehoert nicht ins Repository.
+assets/
+build/
+dist/
+instance.json
+fbtest.ico
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Editoren / Betriebssystem -------------------------------------------
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
