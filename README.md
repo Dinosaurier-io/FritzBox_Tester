@@ -110,38 +110,33 @@ erneuert. Genau diese Unterscheidung macht Firmware-Vergleiche belastbar.
 
 ```mermaid
 flowchart TD
-    subgraph MESS["Messgerät (Laptop)"]
-        direction TB
-        PING["<b>ping_monitor</b><br>ICMP · DNS · Ausfallerkennung"]
-        UPTIME["<b>uptime_monitor</b><br>TR-064 · Neustart-Erkennung"]
-        WLAN["<b>wlan_monitor</b><br>netsh / iw · TR-064"]
-        TRAFFIC["<b>traffic_generator</b><br>Surfen · Stream · Download · Upload"]
-        SPEED["<b>speedtest</b><br>Down / Up · Bufferbloat"]
+    SCHED["<b>Scheduler</b> · Supervisor<br>überwacht jedes Modul und startet<br>Abstürze neu, Backoff 1 s → 60 s"]
+    SCHED -.-> PING
+    SCHED -.-> UPTIME
+    SCHED -.-> WLANM
+    SCHED -.-> TRAFFIC
+    SCHED -.-> SPEED
 
-        BUS{{"<b>EventBus</b> · asyncio.Queue<br>Measurement · Event · RouterStatus<br>WlanStatus · SpeedtestResult · Outage"}}
-        SCHED["<b>Scheduler</b><br>überwacht jedes Modul, startet<br>Abstürze neu (Backoff 1 s → 60 s)"]
-        WRITER["<b>DatabaseWriter</b><br>einziger Konsument des Busses,<br>schreibt gebündelt: 5 s / 500 Zeilen"]
+    PING["<b>ping_monitor</b><br>ICMP · DNS<br>Ausfallerkennung"] --> BUS
+    UPTIME["<b>uptime_monitor</b><br>TR-064<br>Neustart-Erkennung"] --> BUS
+    WLANM["<b>wlan_monitor</b><br>netsh / iw<br>TR-064"] --> BUS
+    TRAFFIC["<b>traffic_generator</b><br>Surfen · Stream<br>Download · Upload"] --> BUS
+    SPEED["<b>speedtest</b><br>Down / Up<br>Bufferbloat"] --> BUS
+    SPEED -. "TrafficGate:<br>pausiert die Last" .-> TRAFFIC
 
-        PING --> BUS
-        UPTIME --> BUS
-        WLAN --> BUS
-        TRAFFIC --> BUS
-        SPEED --> BUS
-        SPEED -. "TrafficGate: pausiert die Last<br>während der Messung" .-> TRAFFIC
-        SCHED -.-> PING
-        SCHED -.-> UPTIME
-        SCHED -.-> WLAN
-        SCHED -.-> TRAFFIC
-        SCHED -.-> SPEED
-        BUS --> WRITER
-    end
+    BUS{{"<b>EventBus</b> · asyncio.Queue<br>Measurement · Event · RouterStatus · WlanStatus · SpeedtestResult · Outage"}}
+    BUS --> WRITER["<b>DatabaseWriter</b> · einziger Konsument<br>Sammelschreiben: 5 s / 500 Zeilen"]
+    WRITER --> DB[("<b>SQLite</b> im WAL-Modus · data/fbtest.sqlite<br>alle Testläufe in einer Datei")]
 
-    WRITER --> DB[("<b>SQLite</b> im WAL-Modus<br>data/fbtest.sqlite<br>alle Testläufe in einer Datei")]
     DB --> EXPORT["<b>export</b><br>CSV · JSON · XLSX"]
     DB --> REPORT["<b>report</b><br>HTML mit Diagrammen"]
     DB --> COMPARE["<b>report --compare</b><br>zwei Firmware-Läufe"]
     DB --> DASH["<b>dashboard</b> · FastAPI<br>Ereignisse alle 15 s"]
     PING -. "Live-Zustand alle 2 s,<br>direkt aus dem Arbeitsspeicher" .-> DASH
+
+    style SCHED fill:#fdf3e0,stroke:#e4a11b
+    style BUS fill:#e7effb,stroke:#2d6cdf
+    style DB fill:#eaf6ef,stroke:#2e9e6b
 ```
 
 ### Warum diese Struktur?
