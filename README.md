@@ -210,6 +210,34 @@ cd FritzBox_Tester
 ./setup.sh
 ```
 
+#### Ohne `git`
+
+Auf der Projektseite **Code → Download ZIP**, entpacken, dann im entstandenen Ordner
+`FritzBox_Tester-main` die Datei **`setup.bat` doppelklicken**. Fertig.
+
+Diese Datei gibt es aus einem konkreten Grund: Windows markiert alles, was aus dem Internet
+kommt, und weigert sich dann, `setup.ps1` auszuführen („ist nicht digital signiert"). Das
+liegt an der Ausführungsrichtlinie, nicht am Skript. `setup.bat` unterliegt dieser Sperre
+nicht, hebt die Markierung an allen Dateien auf und startet danach die eigentliche
+Einrichtung. Optionen funktionieren auch hier: `setup.bat --minimal`, `setup.bat --no-test`.
+
+Unter Linux entsprechend: **Code → Download ZIP**, dann
+
+```bash
+unzip FritzBox_Tester-main.zip && cd FritzBox_Tester-main
+chmod +x setup.sh && ./setup.sh
+```
+
+Der einzige Nachteil ohne `git`: Für ein Update muss das ZIP neu heruntergeladen werden, ein
+`git pull` genügt dann nicht. Wer `git` doch möchte:
+
+```powershell
+winget install Git.Git      # Windows, danach Terminal neu öffnen
+```
+```bash
+sudo apt install git        # Debian, Ubuntu, Raspberry Pi OS
+```
+
 Das Skript sucht ein passendes Python, legt `.venv` an, installiert alle Abhängigkeiten,
 bindet das Projekt ein, prüft jedes Paket auf Importierbarkeit und lässt zum Schluss die
 Testsuite laufen. Es arbeitet nur mit Pfaden relativ zu sich selbst – der Ablageort und der
