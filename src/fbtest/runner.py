@@ -32,6 +32,7 @@ from fbtest.modules.traffic_generator import TrafficGenerator
 from fbtest.modules.uptime_monitor import UptimeMonitor
 from fbtest.modules.wlan_monitor import WlanMonitor
 from fbtest.network import detect_default_routes
+from fbtest.plan import plan_modules
 from fbtest.power import PowerKeeper
 from fbtest.router.fritzbox import TR064_HINT, FritzBoxClient
 from fbtest.storage.database import Database
@@ -383,38 +384,45 @@ class TestRunner:
         )
 
     async def _build_modules(self) -> None:
-        """Registriert alle aktivierten Module beim Scheduler."""
-        config = self.config
+        """Registriert alle aktivierten Module beim Scheduler.
 
-        if config.ping.enabled:
+        Welche das sind, entscheidet :func:`fbtest.plan.plan_modules` - dieselbe
+        Funktion, aus der auch die Vorschau im Dialog «Testlauf starten» ihre
+        Angaben bezieht. Wer hier eine Bedingung aendert, aendert beides.
+        """
+        config = self.config
+        plans = {plan.name: plan for plan in plan_modules(config, self.state.tr064_available)}
+
+        if plans["ping"].active:
             monitor = PingMonitor(self.bus, config.ping, self.state)
             self.scheduler.add("ping", monitor.run)
             self.modules["ping"] = monitor
 
-        if self.fritz is not None and self.fritz.available:
+        if plans["uptime"].active and self.fritz is not None:
             uptime = UptimeMonitor(
                 self.bus, self.fritz, self.state, config.router.poll_interval_s
             )
             self.scheduler.add("uptime", uptime.run)
             self.modules["uptime"] = uptime
-        else:
-            log.warning("Modul 'uptime' wird uebersprungen: kein TR-064-Zugriff.")
 
-        if config.traffic.enabled and config.traffic.profiles:
+        if plans["traffic"].active:
             traffic = TrafficGenerator(self.bus, config.traffic, self.gate)
             self.scheduler.add("traffic", traffic.run)
             self.modules["traffic"] = traffic
 
-        if config.speedtest.enabled:
+        if plans["speedtest"].active:
             speedtest = SpeedtestModule(self.bus, config.speedtest, self.gate)
             self.scheduler.add("speedtest", speedtest.run)
             self.modules["speedtest"] = speedtest
 
-        if config.wlan.enabled and (config.wlan.client_view or self.state.tr064_available):
+        if plans["wlan"].active:
             wlan = WlanMonitor(self.bus, config.wlan, self.fritz, self.state)
             self.scheduler.add("wlan", wlan.run)
             self.modules["wlan"] = wlan
 
+        for plan in plans.values():
+            if not plan.active:
+                log.warning("Modul '%s' wird uebersprungen: %s", plan.name, plan.reason)
         log.info("Aktive Module: %s", ", ".join(self.scheduler.task_names) or "keine")
 
     async def _run_all(self) -> None:

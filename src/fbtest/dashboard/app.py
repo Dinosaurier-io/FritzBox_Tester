@@ -57,6 +57,7 @@ from fbtest.dashboard.controller import ControllerState, RunController
 from fbtest.modules.ping_monitor import select_backend
 from fbtest.network import detect_default_gateway
 from fbtest.paths import is_frozen, resource_path
+from fbtest.plan import plan_modules
 from fbtest.power import PowerKeeper
 from fbtest.report.generator import render_comparison, render_report
 from fbtest.secrets_store import SecretStoreError, account_name, default_store
@@ -791,13 +792,35 @@ def create_app(context: AppContext) -> FastAPI:
 
     # -- Vorabpruefung -----------------------------------------------------
 
+    @app.get("/api/run/plan")
+    async def api_run_plan(tr064: bool | None = None) -> dict[str, Any]:
+        """Sagt voraus, welche Module ein Testlauf jetzt starten wuerde.
+
+        Dieselbe Auskunft, nach der sich auch der Runner richtet - eine zweite
+        Rechnung in der Oberflaeche liefe irgendwann auseinander.
+
+        Args:
+            tr064: Ob die FRITZ!Box ueber TR-064 erreichbar ist. Fehlt die
+                Angabe, melden die davon abhaengigen Module ``offen``, statt
+                eine ungepruefte Erreichbarkeit zu behaupten. Die Vorabpruefung
+                liefert den Wert nach.
+        """
+        return {"modules": [plan.as_dict() for plan in plan_modules(context.config, tr064)]}
+
     @app.post("/api/check")
     async def api_check() -> dict[str, Any]:
         """Fuehrt die Vorabpruefung aus (dieselbe wie ``fbtest check``)."""
         checker = Checker(context.config, context.base_dir, context.db_path)
         results = await checker.run_all()
+        # Der TR-064-Zugriff steht damit fest - die Modulvorschau muss ihn
+        # nicht ein zweites Mal ermitteln.
+        tr064 = next(
+            (str(item.status) == "ok" for item in results if item.name == "TR-064"), False
+        )
         return {
             "worst": str(checker.worst),
+            "tr064": tr064,
+            "modules": [plan.as_dict() for plan in plan_modules(context.config, tr064)],
             "results": [
                 {
                     "name": item.name,

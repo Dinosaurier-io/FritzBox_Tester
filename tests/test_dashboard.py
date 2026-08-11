@@ -229,6 +229,23 @@ class TestStaticFiles:
         script = client.get("/static/app.js").text
         assert "/api/series" not in script
 
+    def test_module_preview_comes_from_the_server(self, client: TestClient) -> None:
+        """Die Oberflaeche darf nicht selbst ausrechnen, welche Module laufen.
+
+        Genau das lief auseinander: Die Vorschau kannte das Uptime-Modul nicht
+        und versprach WLAN auch dort, wo der Runner es nie gestartet haette.
+        """
+        script = client.get("/static/app.js").text
+        assert "/api/run/plan" in script
+        for eigene_regel in ("config.ping.enabled", "config.wlan.enabled", "traffic.profiles"):
+            assert eigene_regel not in script, f"Oberflaeche entscheidet wieder selbst: {eigene_regel}"
+
+    def test_start_dialog_offers_settings(self, client: TestClient) -> None:
+        """Vom Startdialog aus muss man die Einstellungen erreichen koennen."""
+        html = client.get("/").text
+        for element in ("btn-start-settings", "settings-return", "btn-settings-return"):
+            assert f'id="{element}"' in html, f"Bedienelement '{element}' fehlt"
+
     def test_settings_are_navigable(self, client: TestClient) -> None:
         """Die Einstellungen brauchen Menue, Suche und Standardwerte.
 
@@ -449,6 +466,34 @@ class TestOpenRun:
         response = client.delete(f"/api/run/{open_run}")
         assert response.status_code == 409
         assert "laeuft gerade" in response.json()["detail"]
+
+
+class TestPlanApi:
+    """Vorschau der Module vor dem Start."""
+
+    def test_plan_lists_every_module(self, client: TestClient) -> None:
+        data = client.get("/api/run/plan").json()
+        assert [item["name"] for item in data["modules"]] == [
+            "ping", "uptime", "traffic", "speedtest", "wlan"
+        ]
+
+    def test_unknown_router_access_stays_open(self, client: TestClient) -> None:
+        """Ohne Angabe wird keine Erreichbarkeit behauptet, die niemand prueft."""
+        module = {item["name"]: item for item in client.get("/api/run/plan").json()["modules"]}
+        assert module["uptime"]["state"] == "offen"
+        assert module["uptime"]["reason"]
+
+    def test_router_access_decides_uptime(self, client: TestClient) -> None:
+        for erreichbar, zustand in ((True, "aktiv"), (False, "inaktiv")):
+            data = client.get(f"/api/run/plan?tr064={str(erreichbar).lower()}").json()
+            module = {item["name"]: item for item in data["modules"]}
+            assert module["uptime"]["state"] == zustand
+
+    def test_every_module_points_at_its_settings(self, client: TestClient) -> None:
+        """Ein Klick auf das Modul soll den zustaendigen Abschnitt oeffnen."""
+        sections = set(client.get("/api/config").json()["values"])
+        for item in client.get("/api/run/plan").json()["modules"]:
+            assert item["section"] in sections, f"{item['name']}: unbekannter Abschnitt"
 
 
 class TestConfigApi:

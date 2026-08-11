@@ -472,6 +472,20 @@ function refreshState() {
   $("btn-settings-save").classList.toggle("primary", dirty > 0);
 }
 
+/**
+ * Springt zu einem Abschnitt - aufgerufen aus dem Dialog «Testlauf starten».
+ *
+ * Setzt Suche und Filter zurueck, weil sonst ein Abschnitt angesteuert wuerde,
+ * dessen Felder gerade alle ausgeblendet sind.
+ */
+function showSettingsSection(section) {
+  activeSection = section;
+  $("settings-search").value = "";
+  $("settings-only-changed").checked = false;
+  refreshState();
+  $("settings-nav").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 /** Zeigt einen Abschnitt allein; ``null`` zeigt alle (Suchmodus). */
 function showSection(section) {
   for (const panel of document.querySelectorAll("#settings-form .section")) {

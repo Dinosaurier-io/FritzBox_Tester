@@ -124,7 +124,13 @@ document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.add("active");
     $(`tab-${tab.dataset.tab}`).classList.add("active");
     if (tab.dataset.tab === "runs") loadRuns();
-    if (tab.dataset.tab === "settings") { loadSettings(); loadDiagnostics(); }
+    if (tab.dataset.tab === "settings") {
+      // Der Rueckweg gilt nur fuer den Besuch aus dem Startdialog heraus.
+      // openSettingsFor() blendet ihn direkt nach diesem Klick wieder ein.
+      $("settings-return").classList.add("hidden");
+      loadSettings();
+      loadDiagnostics();
+    }
   });
 });
 
@@ -429,29 +435,52 @@ $("run-duration").addEventListener("input", () => {
     c.classList.toggle("active", c.dataset.value === $("run-duration").value.trim()));
 });
 
-/** Zeigt vor dem Start, welche Module laufen werden - und warum eines fehlt. */
-async function renderModulePreview() {
+/**
+ * Zeigt vor dem Start, welche Module laufen werden - und warum eines fehlt.
+ *
+ * Die Entscheidung faellt der Server (`fbtest/plan.py`), nicht diese Datei.
+ * Sie wurde hier frueher nachgerechnet und lief auseinander: Das Uptime-Modul
+ * fehlte ganz, WLAN erschien auch ohne Clientsicht und ohne Router-Zugriff,
+ * und gezaehlt wurden Profile statt virtueller Clients.
+ *
+ * @param {object[]|null} modules Vorberechnete Planung; ohne Angabe wird sie
+ *   ohne Kenntnis des TR-064-Zugriffs geholt (Module melden dann "offen").
+ */
+async function renderModulePreview(modules = null) {
   const box = $("module-preview");
+  const ZUSTAND = { aktiv: "ok", inaktiv: "idle", offen: "warn" };
   try {
-    const config = (await api("/api/config")).values;
-    const secret = await api("/api/secret/password");
-    const parts = [];
-    if (config.ping.enabled) parts.push(`Ping (${config.ping.targets.length} Ziele)`);
-    if (config.traffic.enabled && config.traffic.profiles.length) {
-      parts.push(`Datenverkehr (${config.traffic.profiles.filter((p) => p.enabled).length} Profile)`);
-    }
-    if (config.speedtest.enabled) parts.push("Bandbreite");
-    if (config.wlan.enabled) parts.push("WLAN");
-    box.innerHTML = parts.map((p) => `<span class="chip static">${p}</span>`).join(" ");
-
-    if (!secret.present) {
-      box.innerHTML += `<div class="hint">Ohne FRITZ!Box-Passwort fehlen Router-Laufzeit
-        und <strong>Neustart-Erkennung</strong> — unter Einstellungen nachtragen.</div>`;
-    }
+    const plan = modules || (await api("/api/run/plan")).modules;
+    box.innerHTML = plan.map((item) => `
+      <button type="button" class="module-row ${item.state}" data-section="${item.section}">
+        <span class="dot ${ZUSTAND[item.state]}"></span>
+        <span class="module-name">${item.title}</span>
+        <span class="module-detail">${item.state === "inaktiv" ? item.reason : item.detail}</span>
+      </button>
+      ${item.reason && item.state !== "inaktiv"
+        ? `<div class="hint module-hint">${item.reason}</div>` : ""}`).join("");
   } catch (err) {
     box.textContent = err.message;
   }
 }
+
+/** Wechselt aus dem Startdialog in die Einstellungen und merkt sich den Weg. */
+function openSettingsFor(section) {
+  closeDialog("dialog-start");
+  document.querySelector('.tab[data-tab="settings"]').click();
+  $("settings-return").classList.remove("hidden");
+  if (section) showSettingsSection(section);
+}
+
+$("module-preview").addEventListener("click", (event) => {
+  const row = event.target.closest(".module-row");
+  if (row) openSettingsFor(row.dataset.section);
+});
+$("btn-start-settings").addEventListener("click", () => openSettingsFor(null));
+$("btn-settings-return").addEventListener("click", () => {
+  $("settings-return").classList.add("hidden");
+  $("btn-start").click();
+});
 
 /** Fuehrt die Vorabpruefung aus und laesst bei Warnungen weitermachen. */
 async function preflight() {
@@ -459,6 +488,9 @@ async function preflight() {
   box.innerHTML = `<div class="msg">Vorabprüfung läuft …</div>`;
   try {
     const data = await api("/api/check", { method: "POST" });
+    // Die Pruefung hat den TR-064-Zugriff eben festgestellt; damit steht auch
+    // fest, ob Router-Laufzeit und WLAN wirklich laufen werden.
+    if (data.modules) await renderModulePreview(data.modules);
     const bad = data.results.filter((item) => item.status !== "ok");
     if (!bad.length) {
       box.innerHTML = `<div class="msg ok">Vorabprüfung bestanden.</div>`;

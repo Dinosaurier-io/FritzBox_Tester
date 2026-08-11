@@ -176,6 +176,11 @@
     <div class="muted" id="settings-path"></div>
     <div id="settings-msg"></div>
 
+    <div class="msg hidden" id="settings-return">
+      Aus «Testlauf starten» geöffnet. Änderungen speichern, dann zurück.
+      <button class="btn small primary" id="btn-settings-return">Zurück zum Testlauf</button>
+    </div>
+
     <div class="settings-tools" id="settings-tools">
       <input type="search" id="settings-search"
              placeholder="Suchen: Name, Beschreibung oder Pfad (z. B. ping.interval)">
@@ -226,12 +231,15 @@
     </div>
 
     <div class="field">
-      <div class="label">Aktive Module</div>
-      <div id="module-preview" class="muted">…</div>
+      <div class="label">Was gemessen wird</div>
+      <div id="module-preview" class="module-plan">…</div>
+      <div class="muted">Ein Modul anklicken, um seine Einstellungen zu öffnen.</div>
     </div>
 
     <div id="start-check"></div>
     <div class="dialog-actions">
+      <button class="btn" id="btn-start-settings">Einstellungen …</button>
+      <span class="spacer"></span>
       <button class="btn" data-close>Abbrechen</button>
       <button class="btn primary" id="btn-start-confirm">Starten</button>
     </div>
