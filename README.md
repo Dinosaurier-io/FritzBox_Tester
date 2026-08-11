@@ -2,7 +2,7 @@
 
 <img src="docs/bilder/banner.png" alt="FRITZ!Box Langzeit-Testsystem" width="840">
 
-<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 521 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
+<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 531 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
 
 **Version 0.1.0a1 (Alpha)** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
 
@@ -179,7 +179,7 @@ Fritzbox_Test_APP/
 │  │                         settings.js · setup.js
 │  └─ resources/             config.example.yaml (kommentierte Vorlage)
 ├─ packaging/                PyInstaller-Spec · Build-Skripte · Startvorbereitung
-├─ tests/                    521 Tests, ohne Netzwerk lauffähig
+├─ tests/                    531 Tests, ohne Netzwerk lauffähig
 ├─ docs/EINSTELLUNGEN.md     Referenz aller Konfigurationsfelder (erzeugt)
 ├─ docs/bilder/              Abbildungen dieser Datei
 ├─ beispieldaten/            Exporte zweier Läufe zum Ausprobieren
@@ -310,19 +310,26 @@ kommentierte `config.yaml` an.
 
 Beide Skripte führen zuerst Tests, `ruff` und `mypy` aus und brechen bei Problemen ab – ein
 Paket aus fehlerhaftem Stand soll gar nicht erst entstehen. Ergebnis:
-`dist/FRITZBox-Langzeittest/` mit rund 120 MB.
+`dist/FRITZBox-Langzeittest/` mit rund 103 MB.
 
 Anschliessend vergleichen sie die Prüfsummen der mitgelieferten Oberflächendateien mit dem
 Quellstand. Grund: Ein Neubau ohne `--clean` übernimmt unter Umständen die zwischengespeicherte
 alte Fassung. Der Fehler ist besonders tückisch, weil er wie eine wirkungslose Korrektur
 aussieht – man sucht dann im Quelltext statt im Bauvorgang.
 
-Darin liegen **zwei** Programme, die sich die Bibliotheken teilen:
+Darin liegt **ein** Programm: **`FRITZBox-Langzeittest.exe`**. Was es tut, entscheidet der
+Aufruf:
 
-| Datei | Zweck |
+| Aufruf | Verhalten |
 |---|---|
-| `FRITZBox-Langzeittest.exe` | Fenster und Infobereich, ohne Konsole – zum Doppelklicken |
-| `fbtest.exe` | die vollständige Kommandozeile, für Automatisierung |
+| Doppelklick (ohne Argumente) | öffnet Fenster und Infobereich-Symbol, ohne sichtbare Konsole |
+| `FRITZBox-Langzeittest.exe run --duration 24h` | die vollständige Kommandozeile, für Automatisierung |
+
+Technisch ist es ein Konsolenprogramm, dessen Konsolenfenster der PyInstaller-Startcode
+(`hide_console="hide-early"`) genau dann versteckt, wenn es dem Programm selbst gehört – also
+beim Doppelklick, und noch bevor Python startet. Ein Programm *ohne* Konsole wäre die
+naheliegende Alternative, hätte aber einen Haken: Die Eingabeaufforderung wartet dann nicht
+auf sein Ende, `run` gäbe sofort die Eingabe frei und jede Automatisierung liefe ins Leere.
 
 ### Ohne Administratorrechte
 
@@ -781,12 +788,12 @@ vorn, statt ein weiteres zu öffnen.
 ```powershell
 pip install -r requirements-dev.txt
 
-.\.venv\Scripts\python.exe -m pytest              # 521 Tests, ohne Netzwerk
+.\.venv\Scripts\python.exe -m pytest              # 531 Tests, ohne Netzwerk
 .\.venv\Scripts\python.exe -m ruff check .        # Linting
 .\.venv\Scripts\python.exe -m mypy                # Typprüfung (strict für core/ und storage/)
 ```
 
-Aktueller Stand: **521 Tests grün, ruff ohne Befund, mypy ohne Befund.**
+Aktueller Stand: **531 Tests grün, ruff ohne Befund, mypy ohne Befund.**
 
 Getestet werden gezielt die Stellen, an denen Fehler teuer wären:
 
@@ -808,6 +815,7 @@ Getestet werden gezielt die Stellen, an denen Fehler teuer wären:
 | `test_plan.py` | Modulplanung: Vollständigkeit gegenüber dem Runner, TR-064-Abhängigkeiten, virtuelle Clients statt Profile, **Runner und Vorschau entscheiden nicht getrennt** |
 | `test_config_doc.py` | Referenz stimmt mit den Modellen überein, **jedes Feld hat eine Beschreibung**, kein Abschnitt ohne Einleitung |
 | `test_context.py` | Abgeleitete Pfade, Austausch der Konfiguration im Betrieb, Verhalten bei defekter Datei |
+| `test_packaging.py` | Bauplan des Programmpakets: **genau ein Programm**, Konsole beim Doppelklick verborgen, Weiche zwischen Fenster und Kommandozeile |
 | `test_paths.py` | Rangfolge der fünf Pfadregeln, Erkennung des Projektordners, Auffindbarkeit der mitgelieferten Dateien |
 
 Konventionen: Kommentare, Docstrings (Google-Style) und alle Ausgaben auf **Deutsch**,

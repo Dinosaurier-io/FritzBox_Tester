@@ -1,15 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 """PyInstaller-Beschreibung des Programmpakets.
 
-Erzeugt **zwei** Programme in einem gemeinsamen Ordner:
+Erzeugt **ein** Programm: ``FRITZBox-Langzeittest``. Ohne Argumente - beim
+Doppelklick - oeffnet es Fenster und Infobereich-Symbol, mit Argumenten ist
+es die vollstaendige Kommandozeile. Die Weiche steht in ``entry.py``.
 
-* ``FRITZBox-Langzeittest`` - ohne Konsolenfenster, oeffnet Fenster und
-  Infobereich-Symbol. Das ist das Programm zum Doppelklicken.
-* ``fbtest`` - mit Konsole, die vollstaendige Kommandozeile. Sie bleibt
-  erhalten, damit sich Testlaeufe weiterhin automatisieren lassen.
+Frueher lagen zwei Programme nebeneinander im Ordner, und man musste raten,
+welches davon "die Anwendung" ist.
 
-Beide teilen sich die Bibliotheken; das Paket bleibt dadurch nur unwesentlich
-groesser als mit einem einzigen Programm.
+``console=True`` mit ``hide_console="hide-early"`` ist dabei kein Widerspruch:
+Der Startcode versteckt das Konsolenfenster, wenn es dem Programm selbst
+gehoert - beim Doppelklick also, und noch bevor Python laeuft. Aus einer
+bestehenden Eingabeaufforderung heraus bleibt es sichtbar. Ein Programm ohne
+Konsole waere die naheliegende Alternative, aber dann wartet die
+Eingabeaufforderung nicht auf sein Ende: ``fbtest run`` gaebe sofort die
+Eingabe frei, und jede Automatisierung liefe ins Leere.
 
 Bewusst **onedir** und nicht onefile: onefile entpackt bei jedem Start rund
 80 MB in den Temporaerordner. Mit matplotlib im Gepaeck sind das mehrere
@@ -97,47 +102,30 @@ def analysis(entry: str) -> Analysis:  # noqa: F821 - von PyInstaller bereitgest
     )
 
 
-gui_analysis = analysis("entry_gui.py")
-cli_analysis = analysis("entry_cli.py")
+app_analysis = analysis("entry.py")
+app_pyz = PYZ(app_analysis.pure)  # noqa: F821
 
-MERGE((gui_analysis, "gui", "gui"), (cli_analysis, "cli", "cli"))  # noqa: F821
-
-gui_pyz = PYZ(gui_analysis.pure)  # noqa: F821
-cli_pyz = PYZ(cli_analysis.pure)  # noqa: F821
-
-gui_exe = EXE(  # noqa: F821
-    gui_pyz,
-    gui_analysis.scripts,
+app_exe = EXE(  # noqa: F821
+    app_pyz,
+    app_analysis.scripts,
     [],
     exclude_binaries=True,
     name="FRITZBox-Langzeittest",
     debug=False,
     strip=False,
     upx=False,
-    console=False,  # kein Konsolenfenster
-    icon=ICON,
-)
-
-cli_exe = EXE(  # noqa: F821
-    cli_pyz,
-    cli_analysis.scripts,
-    [],
-    exclude_binaries=True,
-    name="fbtest",
-    debug=False,
-    strip=False,
-    upx=False,
-    console=True,  # die Kommandozeile braucht eine
+    console=True,
+    # Versteckt das Konsolenfenster nur, wenn es dem Programm selbst gehoert.
+    # "early" heisst: bevor der Python-Interpreter startet - es blitzt also
+    # nichts auf. Siehe Modulkopf.
+    hide_console="hide-early",
     icon=ICON,
 )
 
 COLLECT(  # noqa: F821
-    gui_exe,
-    gui_analysis.binaries,
-    gui_analysis.datas,
-    cli_exe,
-    cli_analysis.binaries,
-    cli_analysis.datas,
+    app_exe,
+    app_analysis.binaries,
+    app_analysis.datas,
     strip=False,
     upx=False,
     name="FRITZBox-Langzeittest",

@@ -61,4 +61,4 @@ Write-Host ("Ordner : {0}" -f $target)
 Write-Host ("Groesse: {0:N0} MB" -f $size)
 Write-Host "Programme:"
 Get-ChildItem $target -Filter *.exe | ForEach-Object { Write-Host ("  {0}" -f $_.Name) }
-Write-Host "`nRauchtest:  & '$target\fbtest.exe' version"
+Write-Host "`nRauchtest:  & '$target\FRITZBox-Langzeittest.exe' version"

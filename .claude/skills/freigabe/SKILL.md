@@ -62,7 +62,7 @@ Fehlalarm.
 ## 3. Rauchtest
 
 ```powershell
-& '.\dist\FRITZBox-Langzeittest\fbtest.exe' version
+& '.\dist\FRITZBox-Langzeittest\FRITZBox-Langzeittest.exe' version
 ```
 
 Bei Änderungen an Bibliotheken zusätzlich die betroffene Funktion aus dem **gebündelten**
@@ -71,7 +71,7 @@ und **nicht** als `_internal/<paket>`-Ordner — ein fehlender Ordner beweist al
 der funktionale Aufruf beweist etwas. Beispiel für den Excel-Export:
 
 ```powershell
-& '.\dist\FRITZBox-Langzeittest\fbtest.exe' export 3 --format xlsx
+& '.\dist\FRITZBox-Langzeittest\FRITZBox-Langzeittest.exe' export 3 --format xlsx
 ```
 
 ## 4. Melden
