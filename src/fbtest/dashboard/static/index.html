@@ -176,7 +176,20 @@
     <div class="muted" id="settings-path"></div>
     <div id="settings-msg"></div>
 
-    <div id="settings-form"></div>
+    <div class="settings-tools" id="settings-tools">
+      <input type="search" id="settings-search"
+             placeholder="Suchen: Name, Beschreibung oder Pfad (z. B. ping.interval)">
+      <label class="inline" for="settings-only-changed">
+        <input type="checkbox" id="settings-only-changed">
+        <span>nur Abweichungen vom Standard</span>
+      </label>
+      <span class="settings-dirty" id="settings-dirty"></span>
+    </div>
+
+    <div class="settings-layout" id="settings-layout">
+      <nav class="settings-nav" id="settings-nav"></nav>
+      <div id="settings-form"></div>
+    </div>
 
     <div id="settings-raw" class="hidden">
       <p class="muted">

@@ -2,7 +2,7 @@
 
 <img src="docs/bilder/banner.png" alt="FRITZ!Box Langzeit-Testsystem" width="840">
 
-<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 407 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
+<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 408 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
 
 **Version 0.1.0a1 (Alpha)** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
 
@@ -179,7 +179,7 @@ Fritzbox_Test_APP/
 │  │                         settings.js · setup.js
 │  └─ resources/             config.example.yaml (kommentierte Vorlage)
 ├─ packaging/                PyInstaller-Spec · Build-Skripte · Startvorbereitung
-├─ tests/                    407 Tests, ohne Netzwerk lauffähig
+├─ tests/                    408 Tests, ohne Netzwerk lauffähig
 ├─ docs/bilder/              Abbildungen dieser Datei
 ├─ beispieldaten/            Exporte zweier Läufe zum Ausprobieren
 ├─ assets/                   erzeugte Symbole (gitignored)
@@ -594,8 +594,21 @@ gepflegt. Kommt in der Konfiguration ein Feld dazu, erscheint es hier automatisc
 Beschriftung, Beschreibung und Wertebereich. Eine handgeschriebene Maske wäre spätestens beim
 dritten neuen Feld veraltet – und niemand merkt es.
 
-Validierungsfehler stehen **am verursachenden Feld**, nicht als Sammelmeldung oben. Wird etwas
-abgelehnt, bleibt die Datei unangetastet; vor jedem Schreiben entsteht eine `config.yaml.bak`.
+Über hundert Felder in zehn Abschnitten sind untereinander allerdings nicht zu überblicken.
+Die Maske ist deshalb **zweigeteilt**: links ein Menü der Abschnitte, rechts nur der gewählte.
+Dazu kommen vier Hilfen, die alle dasselbe Ziel haben – den gesuchten Wert schnell finden und
+seine Bedeutung erkennen:
+
+| | |
+|---|---|
+| **Suche** | filtert alle Abschnitte gleichzeitig nach Name, Beschreibung oder Pfad (`ping.interval`); das Menü zeigt die Trefferzahl je Abschnitt |
+| **Dauern mit Einheit** | `30 Minuten` statt `1800.0`; die Einheit ist umschaltbar, gespeichert werden weiterhin Sekunden |
+| **Abweichungen** | Felder, die vom Auslieferungsstandard abweichen, sind mit `≠` markiert und einzeln zurücksetzbar; ein Filter blendet alle übrigen aus |
+| **Offene Änderungen** | werden gezählt und am Feld markiert – und beim Reiterwechsel nicht mehr stillschweigend verworfen |
+
+Validierungsfehler stehen **am verursachenden Feld**, nicht als Sammelmeldung oben; liegt das
+Feld in einem anderen Abschnitt, springt die Maske dorthin. Wird etwas abgelehnt, bleibt die
+Datei unangetastet; vor jedem Schreiben entsteht eine `config.yaml.bak`.
 
 Für Fortgeschrittene gibt es die **Rohansicht** – die Datei im Original, mit Prüfung vor dem
 Speichern. Neue Traffic-Profile entstehen dort, weil deren Felder vom Profiltyp abhängen; im
@@ -763,12 +776,12 @@ vorn, statt ein weiteres zu öffnen.
 ```powershell
 pip install -r requirements-dev.txt
 
-.\.venv\Scripts\python.exe -m pytest              # 407 Tests, ohne Netzwerk
+.\.venv\Scripts\python.exe -m pytest              # 408 Tests, ohne Netzwerk
 .\.venv\Scripts\python.exe -m ruff check .        # Linting
 .\.venv\Scripts\python.exe -m mypy                # Typprüfung (strict für core/ und storage/)
 ```
 
-Aktueller Stand: **407 Tests grün, ruff ohne Befund, mypy ohne Befund.**
+Aktueller Stand: **408 Tests grün, ruff ohne Befund, mypy ohne Befund.**
 
 Getestet werden gezielt die Stellen, an denen Fehler teuer wären:
 

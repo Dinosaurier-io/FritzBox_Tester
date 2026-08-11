@@ -229,26 +229,84 @@ code { font-family: "Cascadia Code", Consolas, monospace; }
 /* ---------- Einstellungsformular ---------- */
 .panel-actions { display: flex; gap: 8px; }
 
-details.section {
-  border: 1px solid var(--line); border-radius: 8px;
-  margin-top: 12px; background: var(--bg);
+/* Werkzeugleiste: Suche, Filter, Zaehler der offenen Aenderungen. */
+.settings-tools {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  margin: 14px 0 4px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
 }
-details.section > summary {
-  padding: 11px 14px; cursor: pointer; font-weight: 600; font-size: 14px;
-  list-style: none;
+.settings-tools input[type="search"] { flex: 1 1 280px; min-width: 220px; }
+.settings-tools label.inline {
+  flex-direction: row; align-items: center; gap: 8px; cursor: pointer;
 }
-details.section > summary::before { content: "▸ "; color: var(--muted); }
-details.section[open] > summary::before { content: "▾ "; }
-details.section > summary:hover { color: var(--accent); }
-details.section > .group { padding: 4px 16px 16px; }
+.settings-tools label.inline input { min-width: 0; width: auto; }
+.settings-dirty { color: var(--warn); font-size: 12.5px; margin-left: auto; }
+
+/* Zweispaltig: links das Abschnittsmenue, rechts nur der gewaehlte Abschnitt.
+   Alle neun Abschnitte untereinander waren eine Rolle ohne Uebersicht. */
+.settings-layout {
+  display: grid; grid-template-columns: 232px 1fr; gap: 22px; margin-top: 14px;
+  align-items: start;
+}
+@media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
+
+.settings-nav { display: flex; flex-direction: column; gap: 3px; position: sticky; top: 86px; }
+.nav-item {
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  gap: 2px 8px; text-align: left; cursor: pointer;
+  background: none; border: 1px solid transparent; border-radius: 8px;
+  color: var(--muted); font: inherit; padding: 8px 12px;
+}
+.nav-item:hover { background: var(--panel-2); color: var(--fg); }
+.nav-item.active { background: var(--panel-2); border-color: var(--line); color: var(--fg); }
+.nav-item.empty { opacity: .4; }
+.nav-title { font-size: 13.5px; font-weight: 600; }
+.nav-sub { grid-column: 1; font-size: 11.5px; color: var(--muted); }
+.nav-badge {
+  grid-row: 1 / span 2; font-size: 11.5px; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.section > .section-title {
+  font-size: 15px; font-weight: 600; color: var(--fg); margin: 0 0 14px;
+  text-transform: none; letter-spacing: 0;
+}
+/* Im Suchmodus stehen mehrere Abschnitte untereinander - dann braucht jeder
+   eine sichtbare Trennung, sonst verschwimmen die Treffer ineinander. */
+.section.search-mode { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+.section.search-mode:first-child { border-top: none; margin-top: 0; }
+.filtered { display: none; }
 
 .group h3 {
   font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
   color: var(--muted); margin: 16px 0 8px; font-weight: 600;
 }
-.field { margin-bottom: 14px; max-width: 620px; }
+.field { margin-bottom: 14px; max-width: 620px; position: relative; }
 .field label { flex-direction: column; }
 .field .field-name { color: var(--fg); font-size: 13px; }
+
+/* Zwei verschiedene Aussagen, deshalb zwei verschiedene Marken:
+   "is-dirty" = seit dem Laden geaendert und noch nicht gespeichert,
+   "is-custom" = weicht dauerhaft vom Auslieferungsstandard ab. */
+.field.is-dirty > label > .field-name::after {
+  content: " ●"; color: var(--warn); font-size: 10px; vertical-align: 2px;
+}
+.field.is-custom > label > .field-name::before {
+  content: "≠ "; color: var(--muted); font-size: 11px;
+}
+.field-reset {
+  position: absolute; top: 0; right: 0;
+  background: none; border: none; color: var(--muted);
+  font: inherit; font-size: 11.5px; cursor: pointer; padding: 0;
+  opacity: 0; transition: opacity .12s;
+}
+.field:hover .field-reset, .field.is-custom .field-reset { opacity: 1; }
+.field-reset:hover { color: var(--accent); text-decoration: underline; }
+
+/* Dauern: Zahl und Einheit getrennt, damit "1800" nicht im Kopf umgerechnet
+   werden muss. Gespeichert werden weiterhin Sekunden. */
+.duration-input { display: flex; gap: 8px; }
+.duration-input input { flex: 1 1 auto; }
+.duration-input .duration-unit { flex: 0 0 118px; min-width: 0; }
 .field input:not([type="checkbox"]), .field select, .field textarea { width: 100%; }
 .field textarea {
   background: var(--bg); color: var(--fg); border: 1px solid var(--line);

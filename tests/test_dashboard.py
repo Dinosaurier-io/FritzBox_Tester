@@ -229,6 +229,21 @@ class TestStaticFiles:
         script = client.get("/static/app.js").text
         assert "/api/series" not in script
 
+    def test_settings_are_navigable(self, client: TestClient) -> None:
+        """Die Einstellungen brauchen Menue, Suche und Standardwerte.
+
+        Zehn Abschnitte mit ueber hundert Feldern untereinander sind eine
+        Rolle, in der niemand etwas wiederfindet - gesucht wird dann in der
+        Rohansicht, wo keine Beschreibung und keine Pruefung mehr hilft.
+        """
+        html = client.get("/").text
+        for element in ("settings-nav", "settings-search", "settings-only-changed"):
+            assert f'id="{element}"' in html, f"Bedienelement '{element}' fehlt"
+
+        script = client.get("/static/settings.js").text
+        assert "meta.default" in script, "Standardwerte werden nicht mehr ausgewertet"
+        assert "DURATION_UNITS" in script, "Dauern erscheinen wieder als nackte Sekunden"
+
 
 class TestSessionToken:
     """Schutz vor Zugriffen fremder Webseiten auf 127.0.0.1.

@@ -10,6 +10,10 @@
  * entscheidet ein Unterscheidungsmerkmal (`type`) darueber, welche Felder es
  * gibt. Aus dem Schema allein liesse sich das nicht aufloesen, aus dem
  * vorhandenen Wert dagegen zweifelsfrei.
+ *
+ * Alle Abschnitte werden einmal gebaut und danach nur noch ein- und
+ * ausgeblendet. Ein Neuaufbau beim Abschnittswechsel wuerde begonnene, noch
+ * nicht gespeicherte Eingaben verwerfen - und zwar unbemerkt.
  */
 
 const SECTION_TITLES = {
@@ -24,12 +28,41 @@ const SECTION_TITLES = {
   dashboard: "Dashboard",
 };
 
+/** Kurzbeschreibung je Abschnitt fuer das Menue. */
+const SECTION_HINTS = {
+  router: "Zugang, Abfragetakt",
+  ping: "Ziele, Takt, Ausfallschwelle",
+  traffic: "Kuenstlich erzeugte Last",
+  speedtest: "Periodische Bandbreitenmessung",
+  wlan: "Router- und Clientsicht",
+  run: "Dauer und Abbruchverhalten",
+  storage: "Datenbank, Berichte, Exporte",
+  logging: "Umfang der Protokolldateien",
+  dashboard: "Adresse und Port",
+};
+
 /** Felder, die das Formular nicht selbst anzeigt. */
 const HIDDEN_FIELDS = new Set(["router.password"]);
+
+/**
+ * Einheiten fuer Dauerfelder, absteigend sortiert.
+ *
+ * In der Konfigurationsdatei stehen Dauern als Sekunden. `1800` ist beim Lesen
+ * aber eine Rechenaufgabe, und beim Schreiben verrutscht schnell eine Null.
+ * Die Maske zeigt deshalb Zahl und Einheit getrennt und rechnet beim Speichern
+ * zurueck - die Datei bleibt unveraendert im gewohnten Format.
+ */
+const DURATION_UNITS = [
+  { suffix: "d", factor: 86400, label: "Tage" },
+  { suffix: "h", factor: 3600, label: "Stunden" },
+  { suffix: "m", factor: 60, label: "Minuten" },
+  { suffix: "s", factor: 1, label: "Sekunden" },
+];
 
 let settingsSchema = null;
 let settingsValues = null;
 let rawMode = false;
+let activeSection = null;
 
 // -------------------------------------------------------------- Schema-Zugriff
 
@@ -79,6 +112,36 @@ function fieldLabel(key, meta) {
   return meta.title || key;
 }
 
+/** Liest einen Wert an einem Punktpfad aus (undefined, wenn nicht vorhanden). */
+function getPath(source, parts) {
+  let node = source;
+  for (const part of parts) {
+    if (node === null || node === undefined) return undefined;
+    node = node[part];
+  }
+  return node;
+}
+
+/** Vergleicht zwei Werte strukturell. */
+function sameValue(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+// -------------------------------------------------------------------- Dauern
+
+/** True, wenn ein Feld eine Dauer in Sekunden enthaelt. */
+function isDuration(key, value) {
+  return typeof value === "number" && /_s$/.test(key);
+}
+
+/** Waehlt die groesste Einheit, in der die Dauer ohne Rest aufgeht. */
+function pickUnit(seconds) {
+  for (const unit of DURATION_UNITS) {
+    if (seconds >= unit.factor && seconds % unit.factor === 0) return unit;
+  }
+  return DURATION_UNITS.at(-1);
+}
+
 // ------------------------------------------------------------------ Rendering
 
 function el(tag, className, text) {
@@ -88,46 +151,87 @@ function el(tag, className, text) {
   return node;
 }
 
+/** Uebernimmt Wertebereiche aus dem Schema, umgerechnet auf die Einheit. */
+function applyBounds(input, meta, factor) {
+  const scale = (bound) => (bound === undefined ? undefined : bound / factor);
+  const min = scale(meta.minimum ?? meta.exclusiveMinimum);
+  const max = scale(meta.maximum);
+  if (min !== undefined) input.min = min; else input.removeAttribute("min");
+  if (max !== undefined) input.max = max; else input.removeAttribute("max");
+}
+
+/** Baut ein Zahlenfeld mit Einheitenauswahl fuer eine Dauer. */
+function renderDuration(input, value, meta) {
+  const unit = pickUnit(value);
+  input.type = "number";
+  input.step = "any";
+  input.value = Number((value / unit.factor).toFixed(6));
+  input.dataset.duration = String(unit.factor);
+  applyBounds(input, meta, unit.factor);
+
+  const select = el("select", "duration-unit");
+  for (const option of DURATION_UNITS) {
+    const item = el("option", null, option.label);
+    item.value = String(option.factor);
+    select.appendChild(item);
+  }
+  select.value = String(unit.factor);
+  select.addEventListener("change", () => {
+    // Die Dauer selbst bleibt gleich, nur ihre Darstellung wechselt.
+    const seconds = Number(input.value || 0) * Number(input.dataset.duration);
+    const factor = Number(select.value);
+    input.dataset.duration = String(factor);
+    input.value = Number((seconds / factor).toFixed(6));
+    applyBounds(input, meta, factor);
+  });
+
+  const box = el("div", "duration-input");
+  box.appendChild(input);
+  box.appendChild(select);
+  return box;
+}
+
 /** Baut ein einzelnes Eingabefeld passend zum Wert. */
 function renderField(path, key, value, meta) {
   const id = `cfg-${path.join("-")}`;
   const wrapper = el("div", "field");
+  wrapper.dataset.path = path.join(".");
   const label = el("label");
   label.setAttribute("for", id);
   label.appendChild(el("span", "field-name", fieldLabel(key, meta)));
 
-  let input;
+  let input = el("input");
+  let control = input;
   const enumValues = meta.enum || meta.const;
 
   if (typeof value === "boolean") {
-    input = el("input");
     input.type = "checkbox";
     input.checked = value;
     wrapper.classList.add("field-check");
   } else if (Array.isArray(enumValues)) {
     input = el("select");
+    control = input;
     for (const option of enumValues) {
       const item = el("option", null, String(option));
       item.value = String(option);
       input.appendChild(item);
     }
     input.value = String(value);
+  } else if (isDuration(key, value)) {
+    control = renderDuration(input, value, meta);
   } else if (typeof value === "number") {
-    input = el("input");
     input.type = "number";
     input.step = "any";
-    if (meta.minimum !== undefined) input.min = meta.minimum;
-    if (meta.exclusiveMinimum !== undefined) input.min = meta.exclusiveMinimum;
-    if (meta.maximum !== undefined) input.max = meta.maximum;
+    applyBounds(input, meta, 1);
     input.value = value;
   } else if (Array.isArray(value)) {
     // Reine Textlisten (URLs, Hostnamen): eine Zeile je Eintrag.
     input = el("textarea");
+    control = input;
     input.rows = Math.max(2, value.length);
     input.value = value.join("\n");
     input.dataset.list = "true";
   } else {
-    input = el("input");
     input.type = key === "password" ? "password" : "text";
     input.value = value === null ? "" : String(value);
     if (value === null) input.dataset.nullable = "true";
@@ -135,12 +239,31 @@ function renderField(path, key, value, meta) {
 
   input.id = id;
   input.dataset.path = path.join(".");
-  input.dataset.kind = typeof value;
-  label.appendChild(input);
+  input.addEventListener("input", refreshState);
+  input.addEventListener("change", refreshState);
+  label.appendChild(control);
   wrapper.appendChild(label);
 
   if (meta.description) wrapper.appendChild(el("div", "hint", meta.description));
+
+  // Zuruecksetzen nur anbieten, wo das Schema einen Standard kennt. Bei
+  // Feldern mit default_factory (Listen) gibt pydantic keinen aus.
+  if (meta.default !== undefined) {
+    wrapper.dataset.default = JSON.stringify(meta.default);
+    const reset = el("button", "field-reset", "auf Standard");
+    reset.type = "button";
+    reset.title = `Standard: ${JSON.stringify(meta.default)}`;
+    reset.addEventListener("click", () => {
+      writeInput(input, meta.default);
+      refreshState();
+    });
+    wrapper.appendChild(reset);
+  }
+
   wrapper.appendChild(el("div", "field-error"));
+  wrapper.dataset.search = [
+    fieldLabel(key, meta), meta.description || "", path.join("."),
+  ].join(" ").toLowerCase();
   return wrapper;
 }
 
@@ -165,6 +288,23 @@ function renderGroup(path, values, title) {
   return group;
 }
 
+/** Baut eine Karte innerhalb einer Objektliste. */
+function renderListItem(path, index, item) {
+  const card = el("div", "list-item");
+  const head = el("div", "list-item-head");
+  head.appendChild(el("span", "muted", `#${index + 1}${item.type ? ` · ${item.type}` : ""}`));
+  const remove = el("button", "btn small danger", "Entfernen");
+  remove.type = "button";
+  remove.addEventListener("click", () => {
+    card.remove();
+    refreshState();
+  });
+  head.appendChild(remove);
+  card.appendChild(head);
+  card.appendChild(renderGroup([...path, String(index)], item, null));
+  return card;
+}
+
 /** Baut die Bearbeitung einer Liste von Objekten (Ping-Ziele, Profile). */
 function renderObjectList(path, key, items, meta) {
   const block = el("div", "group list-group");
@@ -173,21 +313,7 @@ function renderObjectList(path, key, items, meta) {
 
   const container = el("div");
   container.dataset.list = path.join(".");
-  items.forEach((item, index) => {
-    const card = el("div", "list-item");
-    const head = el("div", "list-item-head");
-    head.appendChild(el("span", "muted", `#${index + 1}${item.type ? ` · ${item.type}` : ""}`));
-    const remove = el("button", "btn small danger", "Entfernen");
-    remove.type = "button";
-    remove.addEventListener("click", () => {
-      card.remove();
-      markDirty();
-    });
-    head.appendChild(remove);
-    card.appendChild(head);
-    card.appendChild(renderGroup([...path, String(index)], item, null));
-    container.appendChild(card);
-  });
+  items.forEach((item, index) => container.appendChild(renderListItem(path, index, item)));
   block.appendChild(container);
 
   // Hinzufuegen nur dort, wo die Feldstruktur eindeutig ist. Traffic-Profile
@@ -196,18 +322,9 @@ function renderObjectList(path, key, items, meta) {
     const add = el("button", "btn small", "Ziel hinzufügen");
     add.type = "button";
     add.addEventListener("click", () => {
-      const index = container.children.length;
-      const card = el("div", "list-item");
-      const head = el("div", "list-item-head");
-      head.appendChild(el("span", "muted", `#${index + 1}`));
-      const remove = el("button", "btn small danger", "Entfernen");
-      remove.type = "button";
-      remove.addEventListener("click", () => { card.remove(); markDirty(); });
-      head.appendChild(remove);
-      card.appendChild(head);
-      card.appendChild(renderGroup([...path, String(index)],
-        { name: "", host: "", scope: "internet" }, null));
-      container.appendChild(card);
+      container.appendChild(renderListItem(
+        path, container.children.length, { name: "", host: "", scope: "internet" }));
+      refreshState();
     });
     block.appendChild(add);
   } else {
@@ -230,6 +347,37 @@ function setPath(target, parts, value) {
   node[parts.at(-1)] = value;
 }
 
+/** Liest ein einzelnes Bedienelement als Konfigurationswert. */
+function readInput(input) {
+  if (input.type === "checkbox") return input.checked;
+  if (input.dataset.list === "true") {
+    return input.value.split("\n").map((line) => line.trim()).filter(Boolean);
+  }
+  if (input.dataset.duration !== undefined) {
+    return input.value === "" ? null : Number(input.value) * Number(input.dataset.duration);
+  }
+  if (input.type === "number") return input.value === "" ? null : Number(input.value);
+  if (input.value === "" && input.dataset.nullable === "true") return null;
+  return input.value;
+}
+
+/** Schreibt einen Konfigurationswert zurueck in sein Bedienelement. */
+function writeInput(input, value) {
+  if (input.type === "checkbox") {
+    input.checked = Boolean(value);
+  } else if (input.dataset.list === "true") {
+    input.value = (value || []).join("\n");
+  } else if (input.dataset.duration !== undefined) {
+    const unit = pickUnit(Number(value));
+    input.dataset.duration = String(unit.factor);
+    input.value = Number((Number(value) / unit.factor).toFixed(6));
+    const select = input.parentElement.querySelector(".duration-unit");
+    if (select) select.value = String(unit.factor);
+  } else {
+    input.value = value === null ? "" : String(value);
+  }
+}
+
 /**
  * Liest das Formular aus.
  *
@@ -245,20 +393,8 @@ function collectValues() {
   }
 
   for (const input of document.querySelectorAll("#settings-form [data-path]")) {
-    const parts = input.dataset.path.split(".");
-    let value;
-    if (input.type === "checkbox") {
-      value = input.checked;
-    } else if (input.dataset.list === "true") {
-      value = input.value.split("\n").map((line) => line.trim()).filter(Boolean);
-    } else if (input.type === "number") {
-      value = input.value === "" ? null : Number(input.value);
-    } else if (input.value === "" && input.dataset.nullable === "true") {
-      value = null;
-    } else {
-      value = input.value;
-    }
-    setPath(result, parts, value);
+    if (input.tagName === "DIV") continue;
+    setPath(result, input.dataset.path.split("."), readInput(input));
   }
 
   // Nach dem Entfernen von Listeneintraegen bleiben Luecken - sie wuerden als
@@ -279,11 +415,77 @@ function compactArrays(node) {
   }
 }
 
-// ------------------------------------------------------------------- Aktionen
+// ------------------------------------------------------------------ Zustand
 
-function markDirty() {
-  $("btn-settings-save").classList.add("primary");
+/**
+ * Bewertet jedes Feld neu und richtet Menue, Filter und Knopfleiste danach.
+ *
+ * Unterschieden werden zwei Dinge, die leicht verwechselt werden: `is-dirty`
+ * heisst "seit dem Laden geaendert, noch nicht gespeichert", `is-custom`
+ * dagegen "weicht vom Auslieferungsstandard ab". Ein gespeicherter Wert kann
+ * dauerhaft vom Standard abweichen, ohne dass etwas offen waere.
+ */
+function refreshState() {
+  const term = $("settings-search").value.trim().toLowerCase();
+  const onlyChanged = $("settings-only-changed").checked;
+  const counts = {};
+  let dirty = 0;
+
+  for (const field of document.querySelectorAll("#settings-form .field")) {
+    const input = field.querySelector("[data-path]");
+    if (!input) continue;
+    const parts = field.dataset.path.split(".");
+    const current = readInput(input);
+
+    const saved = getPath(settingsValues, parts);
+    const isDirty = saved === undefined || !sameValue(current, saved);
+    field.classList.toggle("is-dirty", isDirty);
+    if (isDirty) dirty += 1;
+
+    const hasDefault = field.dataset.default !== undefined;
+    const isCustom = hasDefault && !sameValue(current, JSON.parse(field.dataset.default));
+    field.classList.toggle("is-custom", isCustom);
+
+    const matches = !term || field.dataset.search.includes(term);
+    const visible = matches && (!onlyChanged || isCustom || isDirty);
+    field.classList.toggle("filtered", !visible);
+    if (visible) counts[parts[0]] = (counts[parts[0]] || 0) + 1;
+  }
+
+  // Gruppen und Listenkarten ohne sichtbares Feld sind nur noch Ueberschrift.
+  for (const box of document.querySelectorAll("#settings-form .group, #settings-form .list-item")) {
+    box.classList.toggle("filtered", !box.querySelector(".field:not(.filtered)"));
+  }
+
+  const filtering = Boolean(term) || onlyChanged;
+  for (const item of document.querySelectorAll("#settings-nav .nav-item")) {
+    const section = item.dataset.section;
+    const hits = counts[section] || 0;
+    item.querySelector(".nav-badge").textContent = filtering ? String(hits) : "";
+    item.classList.toggle("empty", filtering && hits === 0);
+  }
+  showSection(filtering ? null : activeSection);
+
+  $("settings-dirty").textContent = dirty
+    ? `${dirty} Änderung${dirty > 1 ? "en" : ""} nicht gespeichert`
+    : "";
+  $("btn-settings-save").classList.toggle("primary", dirty > 0);
 }
+
+/** Zeigt einen Abschnitt allein; ``null`` zeigt alle (Suchmodus). */
+function showSection(section) {
+  for (const panel of document.querySelectorAll("#settings-form .section")) {
+    const own = panel.dataset.section;
+    const empty = !panel.querySelector(".field:not(.filtered)");
+    panel.classList.toggle("hidden", section ? own !== section : empty);
+    panel.classList.toggle("search-mode", section === null);
+  }
+  for (const item of document.querySelectorAll("#settings-nav .nav-item")) {
+    item.classList.toggle("active", section !== null && item.dataset.section === section);
+  }
+}
+
+// ------------------------------------------------------------------- Aktionen
 
 function clearFieldErrors() {
   document.querySelectorAll("#settings-form .field-error").forEach((node) => {
@@ -303,6 +505,13 @@ function showFieldErrors(errors) {
       const field = input.closest(".field");
       field.classList.add("has-error");
       field.querySelector(".field-error").textContent = error.message;
+      // Ein Fehler in einem ausgeblendeten Abschnitt bliebe sonst unsichtbar,
+      // und die Meldung "1 Feld fehlerhaft" haette keinen erkennbaren Bezug.
+      const section = field.closest(".section");
+      if (section) {
+        activeSection = section.dataset.section;
+        showSection(activeSection);
+      }
     } else {
       orphans.push(`${error.path}: ${error.message}`);
     }
@@ -312,7 +521,40 @@ function showFieldErrors(errors) {
   return orphans;
 }
 
-async function loadSettings() {
+/** Baut das Abschnittsmenue neben dem Formular. */
+function renderNav(sections) {
+  const nav = $("settings-nav");
+  nav.innerHTML = "";
+  for (const section of sections) {
+    const item = el("button", "nav-item");
+    item.type = "button";
+    item.dataset.section = section;
+    item.appendChild(el("span", "nav-title", SECTION_TITLES[section] || section));
+    item.appendChild(el("span", "nav-sub", SECTION_HINTS[section] || ""));
+    item.appendChild(el("span", "nav-badge"));
+    item.addEventListener("click", () => {
+      activeSection = section;
+      $("settings-search").value = "";
+      $("settings-only-changed").checked = false;
+      refreshState();
+    });
+    nav.appendChild(item);
+  }
+}
+
+/**
+ * Laedt Schema und Werte und baut das Formular neu auf.
+ *
+ * Beim Wechsel auf den Reiter wird diese Funktion erneut aufgerufen. Gibt es
+ * ungespeicherte Aenderungen, bleibt der Aufbau stehen - ein Neuaufbau haette
+ * sie kommentarlos verworfen. Ueber "Verwerfen" ist das weiterhin moeglich,
+ * dann aber absichtlich.
+ */
+async function loadSettings(force = false) {
+  if (!force && settingsValues && document.querySelector("#settings-form .field.is-dirty")) {
+    await loadSecretState();
+    return;
+  }
   try {
     if (!settingsSchema) settingsSchema = await api("/api/config/schema");
     const data = await api("/api/config");
@@ -325,16 +567,20 @@ async function loadSettings() {
              übrige Änderungen gelten ab dem nächsten Lauf.</span>`
         : "");
 
+    const sections = Object.keys(settingsValues);
+    if (!sections.includes(activeSection)) activeSection = sections[0];
+    renderNav(sections);
+
     const form = $("settings-form");
     form.innerHTML = "";
     for (const [section, values] of Object.entries(settingsValues)) {
-      const panel = el("details", "section");
-      if (["router", "ping"].includes(section)) panel.open = true;
-      const summary = el("summary", null, SECTION_TITLES[section] || section);
-      panel.appendChild(summary);
+      const panel = el("div", "section");
+      panel.dataset.section = section;
+      panel.appendChild(el("h3", "section-title", SECTION_TITLES[section] || section));
       panel.appendChild(renderGroup([section], values, null));
       form.appendChild(panel);
     }
+    refreshState();
     await loadSecretState();
   } catch (err) {
     showMessage($("settings-msg"), "bad", err.message);
@@ -359,7 +605,7 @@ async function saveSettings() {
         [result.backup ? `Sicherung: ${result.backup}` : "", ...(result.warnings || [])]
           .filter(Boolean).join("\n"));
     }
-    await loadSettings();
+    await loadSettings(true);
     if (rawMode) await loadRaw();
   } catch (err) {
     const errors = err.fieldErrors || [];
@@ -462,17 +708,20 @@ async function loadDiagnostics() {
 
 $("btn-settings-save").addEventListener("click", saveSettings);
 $("btn-settings-reload").addEventListener("click", async () => {
-  await loadSettings();
+  await loadSettings(true);
   if (rawMode) await loadRaw();
   showMessage($("settings-msg"), "ok", "Änderungen verworfen, Stand neu geladen.");
 });
 $("btn-raw-toggle").addEventListener("click", async () => {
   rawMode = !rawMode;
   $("btn-raw-toggle").textContent = rawMode ? "Formular" : "Rohansicht";
-  $("settings-form").classList.toggle("hidden", rawMode);
+  $("settings-layout").classList.toggle("hidden", rawMode);
+  $("settings-tools").classList.toggle("hidden", rawMode);
   $("settings-raw").classList.toggle("hidden", !rawMode);
   if (rawMode) await loadRaw();
 });
+$("settings-search").addEventListener("input", refreshState);
+$("settings-only-changed").addEventListener("change", refreshState);
 $("btn-secret-save").addEventListener("click", saveSecret);
 $("btn-secret-delete").addEventListener("click", async () => {
   await api("/api/secret/password", { method: "DELETE" });
