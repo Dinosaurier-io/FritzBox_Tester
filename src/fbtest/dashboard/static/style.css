@@ -260,29 +260,44 @@ code { font-family: "Cascadia Code", Consolas, monospace; }
 .settings-dirty { color: var(--warn); font-size: 12.5px; margin-left: auto; }
 
 /* Zweispaltig: links das Abschnittsmenue, rechts nur der gewaehlte Abschnitt.
-   Alle neun Abschnitte untereinander waren eine Rolle ohne Uebersicht. */
+   Alle neun Abschnitte untereinander waren eine Rolle ohne Uebersicht.
+
+   Die Spalte ist schmal gehalten (168 px). Sie enthaelt nur noch je eine
+   Zeile Text, und jedes Pixel hier fehlt rechts den Profiltabellen. */
 .settings-layout {
-  display: grid; grid-template-columns: 232px 1fr; gap: 22px; margin-top: 14px;
+  display: grid; grid-template-columns: 168px 1fr; gap: 26px; margin-top: 14px;
   align-items: start;
 }
 @media (max-width: 900px) { .settings-layout { grid-template-columns: 1fr; } }
 
-.settings-nav { display: flex; flex-direction: column; gap: 3px; position: sticky; top: 86px; }
+.settings-nav { position: sticky; top: 86px; }
+.nav-group + .nav-group { margin-top: 16px; }
+.nav-group.empty { opacity: .45; }
+.nav-group-title {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--muted); padding: 0 10px; margin-bottom: 6px;
+}
+
+/* Der aktive Eintrag traegt einen Balken in der Akzentfarbe. Ein blosser
+   Hintergrundwechsel war vom Hover-Zustand kaum zu unterscheiden. */
 .nav-item {
-  display: grid; grid-template-columns: 1fr auto; align-items: center;
-  gap: 2px 8px; text-align: left; cursor: pointer;
-  background: none; border: 1px solid transparent; border-radius: 8px;
-  color: var(--muted); font: inherit; padding: 8px 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-left: 2px solid transparent;
+  border-radius: 0 7px 7px 0; color: var(--muted); font: inherit;
+  padding: 6px 10px; line-height: 1.35;
 }
 .nav-item:hover { background: var(--panel-2); color: var(--fg); }
-.nav-item.active { background: var(--panel-2); border-color: var(--line); color: var(--fg); }
-.nav-item.empty { opacity: .4; }
-.nav-title { font-size: 13.5px; font-weight: 600; }
-.nav-sub { grid-column: 1; font-size: 11.5px; color: var(--muted); }
-.nav-badge {
-  grid-row: 1 / span 2; font-size: 11.5px; color: var(--accent);
-  font-variant-numeric: tabular-nums;
+.nav-item.active {
+  background: var(--panel-2); border-left-color: var(--accent); color: var(--fg);
 }
+.nav-item.empty { opacity: .4; }
+.nav-title { font-size: 13px; font-weight: 600; }
+
+/* Punkt statt Zahl: dass in einem Abschnitt etwas offen ist, muss man sehen -
+   wie viel es ist, steht ohnehin oben in der Werkzeugleiste. */
+.nav-dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.nav-item.has-dirty .nav-dot { background: var(--accent); }
 
 .section > .section-title {
   font-size: 15px; font-weight: 600; color: var(--fg); margin: 0 0 14px;

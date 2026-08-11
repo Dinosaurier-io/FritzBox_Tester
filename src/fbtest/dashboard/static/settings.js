@@ -26,9 +26,24 @@ const SECTION_TITLES = {
   storage: "Speicherorte",
   logging: "Protokollierung",
   dashboard: "Dashboard",
+  desktop: "Desktop-Fenster",
 };
 
-/** Kurzbeschreibung je Abschnitt fuer das Menue. */
+/**
+ * Gliederung des Abschnittsmenues.
+ *
+ * Neun gleichrangige Eintraege sind eine Liste, in der man sucht statt findet.
+ * Die Gruppen trennen nach der Frage, die man gerade hat: Was wird gemessen,
+ * wie laeuft der Test ab, wo landen die Daten. Die Reihenfolge innerhalb einer
+ * Gruppe ist die der Wichtigkeit, nicht die der Konfigurationsdatei.
+ */
+const SECTION_GROUPS = [
+  { title: "Messung", sections: ["ping", "traffic", "speedtest", "wlan"] },
+  { title: "Testlauf", sections: ["router", "run"] },
+  { title: "System", sections: ["storage", "logging", "dashboard", "desktop"] },
+];
+
+/** Kurzbeschreibung je Abschnitt - als Tooltip, nicht mehr im Menue selbst. */
 const SECTION_HINTS = {
   router: "Zugang, Abfragetakt",
   ping: "Ziele, Takt, Ausfallschwelle",
@@ -39,6 +54,7 @@ const SECTION_HINTS = {
   storage: "Datenbank, Berichte, Exporte",
   logging: "Umfang der Protokolldateien",
   dashboard: "Adresse und Port",
+  desktop: "Fenstergroesse, Infobereich, Meldungen",
 };
 
 /** Felder, die das Formular nicht selbst anzeigt. */
@@ -429,6 +445,7 @@ function refreshState() {
   const term = $("settings-search").value.trim().toLowerCase();
   const onlyChanged = $("settings-only-changed").checked;
   const counts = {};
+  const dirtyPerSection = {};
   let dirty = 0;
 
   for (const field of document.querySelectorAll("#settings-form .field")) {
@@ -440,7 +457,10 @@ function refreshState() {
     const saved = getPath(settingsValues, parts);
     const isDirty = saved === undefined || !sameValue(current, saved);
     field.classList.toggle("is-dirty", isDirty);
-    if (isDirty) dirty += 1;
+    if (isDirty) {
+      dirty += 1;
+      dirtyPerSection[parts[0]] = (dirtyPerSection[parts[0]] || 0) + 1;
+    }
 
     const hasDefault = field.dataset.default !== undefined;
     const isCustom = hasDefault && !sameValue(current, JSON.parse(field.dataset.default));
@@ -457,12 +477,16 @@ function refreshState() {
     box.classList.toggle("filtered", !box.querySelector(".field:not(.filtered)"));
   }
 
+  // Beim Filtern verblassen Abschnitte ohne Treffer, statt eine Trefferzahl
+  // anzuzeigen: Wo nichts steht, muss man auch nicht nachzaehlen.
   const filtering = Boolean(term) || onlyChanged;
   for (const item of document.querySelectorAll("#settings-nav .nav-item")) {
     const section = item.dataset.section;
-    const hits = counts[section] || 0;
-    item.querySelector(".nav-badge").textContent = filtering ? String(hits) : "";
-    item.classList.toggle("empty", filtering && hits === 0);
+    item.classList.toggle("empty", filtering && !counts[section]);
+    item.classList.toggle("has-dirty", Boolean(dirtyPerSection[section]));
+  }
+  for (const box of document.querySelectorAll("#settings-nav .nav-group")) {
+    box.classList.toggle("empty", !box.querySelector(".nav-item:not(.empty)"));
   }
   showSection(filtering ? null : activeSection);
 
@@ -535,24 +559,50 @@ function showFieldErrors(errors) {
   return orphans;
 }
 
-/** Baut das Abschnittsmenue neben dem Formular. */
+/** Baut einen einzelnen Menueeintrag. */
+function navItem(section) {
+  const item = el("button", "nav-item");
+  item.type = "button";
+  item.dataset.section = section;
+  // Die Kurzbeschreibung bleibt als Tooltip erhalten. Als zweite Zeile unter
+  // jedem der neun Eintraege war sie mehr Unruhe als Hilfe.
+  item.title = SECTION_HINTS[section] || "";
+  item.appendChild(el("span", "nav-title", SECTION_TITLES[section] || section));
+  item.appendChild(el("span", "nav-dot"));
+  item.addEventListener("click", () => {
+    activeSection = section;
+    $("settings-search").value = "";
+    $("settings-only-changed").checked = false;
+    refreshState();
+  });
+  return item;
+}
+
+/**
+ * Baut das Abschnittsmenue neben dem Formular, nach Gruppen gegliedert.
+ *
+ * Args:
+ *   sections: Die Abschnitte, die das Schema tatsaechlich hergibt.
+ */
 function renderNav(sections) {
   const nav = $("settings-nav");
   nav.innerHTML = "";
-  for (const section of sections) {
-    const item = el("button", "nav-item");
-    item.type = "button";
-    item.dataset.section = section;
-    item.appendChild(el("span", "nav-title", SECTION_TITLES[section] || section));
-    item.appendChild(el("span", "nav-sub", SECTION_HINTS[section] || ""));
-    item.appendChild(el("span", "nav-badge"));
-    item.addEventListener("click", () => {
-      activeSection = section;
-      $("settings-search").value = "";
-      $("settings-only-changed").checked = false;
-      refreshState();
-    });
-    nav.appendChild(item);
+
+  const offen = new Set(sections);
+  const groups = SECTION_GROUPS.map((group) => ({
+    title: group.title,
+    sections: group.sections.filter((section) => offen.delete(section)),
+  }));
+  // Ein neuer Abschnitt in der Konfiguration darf nicht aus dem Menue fallen,
+  // nur weil ihn hier niemand eingeordnet hat - er waere dann unerreichbar.
+  if (offen.size) groups.push({ title: "Weitere", sections: [...offen] });
+
+  for (const group of groups) {
+    if (!group.sections.length) continue;
+    const box = el("div", "nav-group");
+    box.appendChild(el("div", "nav-group-title", group.title));
+    for (const section of group.sections) box.appendChild(navItem(section));
+    nav.appendChild(box);
   }
 }
 

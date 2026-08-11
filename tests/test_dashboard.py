@@ -274,6 +274,39 @@ class TestStaticFiles:
         assert "meta.default" in script, "Standardwerte werden nicht mehr ausgewertet"
         assert "DURATION_UNITS" in script, "Dauern erscheinen wieder als nackte Sekunden"
 
+    def test_every_section_is_named_and_grouped(self, client: TestClient) -> None:
+        """Jeder Konfigurationsabschnitt braucht Titel, Kurztext und Gruppe.
+
+        Das Menue baut sich aus dem Schema, die Beschriftung dagegen aus
+        Tabellen in ``settings.js``. Ein neuer Abschnitt in ``config.py``
+        erscheint deshalb zwar automatisch - aber unter seinem Rohnamen und
+        unter «Weitere». Das faellt niemandem auf, der ihn nicht sucht.
+        """
+        script = client.get("/static/settings.js").text
+
+        def eintraege(name: str) -> set[str]:
+            """Liest die Schluessel einer Tabelle aus dem Quelltext."""
+            block = script.split(f"const {name} = ", 1)[1].split("\n};", 1)[0]
+            return set(re.findall(r"^\s{2}(\w+):", block, re.MULTILINE))
+
+        gruppiert = set(re.findall(r'"(\w+)"', script.split("SECTION_GROUPS = ", 1)[1]
+                                   .split("\n];", 1)[0]))
+        for section in AppConfig.model_fields:
+            assert section in eintraege("SECTION_TITLES"), f"'{section}' ohne Titel im Menue"
+            assert section in eintraege("SECTION_HINTS"), f"'{section}' ohne Kurzbeschreibung"
+            assert section in gruppiert, f"'{section}' landet in der Gruppe «Weitere»"
+
+    def test_menu_shows_one_line_per_entry(self, client: TestClient) -> None:
+        """Untertitel und Trefferzaehler sind aus dem Menue verschwunden.
+
+        Zehn Eintraege mit je zwei Zeilen und einer Zahl daneben sind unruhig
+        und kosten Breite, die rechts den Profiltabellen fehlt.
+        """
+        script = client.get("/static/settings.js").text
+        for verbannt in ("nav-sub", "nav-badge"):
+            assert verbannt not in script, f"'{verbannt}' ist wieder im Menue"
+        assert "nav-group" in script, "die Gliederung in Gruppen fehlt"
+
 
 class TestSessionToken:
     """Schutz vor Zugriffen fremder Webseiten auf 127.0.0.1.
