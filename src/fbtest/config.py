@@ -145,16 +145,22 @@ class PingTarget(_Base):
 class DnsCheckConfig(_Base):
     """Getrennte Messung der DNS-Aufloesungszeit."""
 
-    enabled: bool = True
-    hostnames: list[str] = Field(default_factory=lambda: ["www.google.com", "www.sbb.ch"])
-    interval_s: float = Field(default=30.0, gt=0)
-    timeout_s: float = Field(default=5.0, gt=0)
+    enabled: bool = Field(default=True, description="DNS-Aufloesung getrennt vom Ping messen")
+    hostnames: list[str] = Field(
+        default_factory=lambda: ["www.google.com", "www.sbb.ch"],
+        description="Namen, die aufgeloest werden; je Durchgang alle nacheinander",
+    )
+    interval_s: float = Field(default=30.0, gt=0, description="Abstand zwischen zwei Durchgaengen")
+    timeout_s: float = Field(default=5.0, gt=0, description="Timeout je Namensaufloesung")
 
 
 class PingConfig(_Base):
     """Konfiguration des Ping-Monitors."""
 
-    enabled: bool = True
+    enabled: bool = Field(
+        default=True,
+        description="Ping-Ueberwachung aktiv; ohne sie gibt es keine Ausfallerkennung",
+    )
     interval_s: float = Field(default=1.0, gt=0, description="Abstand zwischen zwei Pings je Ziel")
     timeout_s: float = Field(default=1.0, gt=0, description="Timeout je Ping")
     aggregate_window_s: float = Field(
@@ -171,8 +177,13 @@ class PingConfig(_Base):
         default=False,
         description="Jeden einzelnen Ping speichern (sehr viele Zeilen) statt nur die Fenster",
     )
-    targets: list[PingTarget] = Field(default_factory=list)
-    dns: DnsCheckConfig = Field(default_factory=DnsCheckConfig)
+    targets: list[PingTarget] = Field(
+        default_factory=list,
+        description="Ueberwachte Ziele; mindestens eines, sinnvoll sind Gateway und Internet",
+    )
+    dns: DnsCheckConfig = Field(
+        default_factory=DnsCheckConfig, description="Getrennte Messung der Namensaufloesung"
+    )
 
     @field_validator("targets")
     @classmethod
@@ -191,7 +202,7 @@ class _TrafficProfileBase(_Base):
     """Gemeinsame Felder aller Traffic-Profile."""
 
     name: str = Field(description="Freier Name, erscheint so in der Auswertung")
-    enabled: bool = True
+    enabled: bool = Field(default=True, description="Profil laeuft mit; false = bleibt untaetig")
     clients: int = Field(default=1, ge=1, le=64, description="Anzahl paralleler virtueller Clients")
     target_rate_mbps: float = Field(
         default=0.0,
@@ -203,8 +214,13 @@ class _TrafficProfileBase(_Base):
 class WebProfile(_TrafficProfileBase):
     """Simuliert Surfen: periodische HTTP-Requests, misst TTFB und Gesamtzeit."""
 
-    type: Literal["web"] = "web"
-    urls: list[str] = Field(default_factory=list)
+    type: Literal["web"] = Field(
+        default="web", description="Profiltyp - bestimmt die uebrigen Felder"
+    )
+    urls: list[str] = Field(
+        default_factory=list,
+        description="Aufgerufene Seiten; geladen wird nur das HTML, keine Bilder oder Skripte",
+    )
     interval_s: float = Field(default=15.0, gt=0, description="Pause zwischen zwei Surf-Runden")
 
     @field_validator("urls")
@@ -218,9 +234,13 @@ class WebProfile(_TrafficProfileBase):
 class StreamingProfile(_TrafficProfileBase):
     """Simuliert einen Videostream: konstante Rate, erkennt Einbrueche (Stalls)."""
 
-    type: Literal["streaming"] = "streaming"
-    url: str
-    target_rate_mbps: float = Field(default=5.0, gt=0)
+    type: Literal["streaming"] = Field(
+        default="streaming", description="Profiltyp - bestimmt die uebrigen Felder"
+    )
+    url: str = Field(description="Testdatei, die fortlaufend gelesen wird")
+    target_rate_mbps: float = Field(
+        default=5.0, gt=0, description="Konstante Rate je Client - die Bitrate des 'Videos'"
+    )
     stall_threshold_pct: float = Field(
         default=60.0,
         gt=0,
@@ -235,25 +255,35 @@ class StreamingProfile(_TrafficProfileBase):
 class DownloadProfile(_TrafficProfileBase):
     """Dauerdownload einer grossen Testdatei."""
 
-    type: Literal["download"] = "download"
-    url: str
+    type: Literal["download"] = Field(
+        default="download", description="Profiltyp - bestimmt die uebrigen Felder"
+    )
+    url: str = Field(
+        description="Testdatei; wird endlos wiederholt geladen und nirgends gespeichert"
+    )
 
 
 class UploadProfile(_TrafficProfileBase):
     """HTTP-POST von generierten Zufallsdaten."""
 
-    type: Literal["upload"] = "upload"
-    url: str
-    chunk_size_kb: int = Field(default=256, ge=1, le=8192)
+    type: Literal["upload"] = Field(
+        default="upload", description="Profiltyp - bestimmt die uebrigen Felder"
+    )
+    url: str = Field(description="Endpunkt, der HTTP-POST annimmt - moeglichst im eigenen LAN")
+    chunk_size_kb: int = Field(
+        default=256, ge=1, le=8192, description="Groesse des wiederholt gesendeten Zufallsblocks"
+    )
 
 
 class IperfProfile(_TrafficProfileBase):
     """Reiner LAN-Durchsatz gegen einen iperf3-Server (ohne WAN-Einfluss)."""
 
-    type: Literal["lan_iperf"] = "lan_iperf"
+    type: Literal["lan_iperf"] = Field(
+        default="lan_iperf", description="Profiltyp - bestimmt die uebrigen Felder"
+    )
     server: str = Field(description="IP des iperf3-Servers im LAN")
-    port: int = Field(default=5201, ge=1, le=65535)
-    duration_s: float = Field(default=10.0, gt=0)
+    port: int = Field(default=5201, ge=1, le=65535, description="Port des iperf3-Servers")
+    duration_s: float = Field(default=10.0, gt=0, description="Dauer einer einzelnen Messung")
     interval_s: float = Field(default=300.0, gt=0, description="Abstand zwischen zwei Messungen")
     reverse: bool = Field(default=False, description="True = Download-Richtung messen")
 
@@ -267,8 +297,13 @@ TrafficProfile = Annotated[
 class TrafficConfig(_Base):
     """Konfiguration des Traffic-Generators."""
 
-    enabled: bool = True
-    profiles: list[TrafficProfile] = Field(default_factory=list)
+    enabled: bool = Field(
+        default=True, description="Kuenstliche Last erzeugen; false = nur beobachten"
+    )
+    profiles: list[TrafficProfile] = Field(
+        default_factory=list,
+        description="Virtuelle Clients; jedes Profil laeuft unabhaengig mit eigener Statistik",
+    )
     backoff_start_s: float = Field(default=1.0, gt=0, description="Startwert des Fehler-Backoffs")
     backoff_max_s: float = Field(default=60.0, gt=0, description="Obergrenze des Fehler-Backoffs")
 
@@ -281,14 +316,19 @@ class TrafficConfig(_Base):
 class SpeedtestConfig(_Base):
     """Periodische WAN-Bandbreitenmessung inklusive Bufferbloat-Indikator."""
 
-    enabled: bool = True
+    enabled: bool = Field(default=True, description="Periodische Bandbreitenmessung durchfuehren")
     interval_s: float = Field(default=1800.0, gt=0, description="Abstand zwischen zwei Messungen")
-    download_url: str = Field(default="https://speed.hetzner.de/100MB.bin")
+    download_url: str = Field(
+        default="https://speed.hetzner.de/100MB.bin",
+        description="Testdatei; ueber den ganzen Lauf dieselbe, sonst sind Werte unvergleichbar",
+    )
     upload_url: str = Field(default="", description="Leer = Upload-Messung ueberspringen")
     connections: int = Field(default=4, ge=1, le=16, description="Parallele Verbindungen")
     measure_duration_s: float = Field(default=10.0, gt=0, description="Netto-Messfenster")
     warmup_s: float = Field(default=3.0, ge=0, description="Slow-Start-Phase, wird nicht gewertet")
-    upload_size_mb: int = Field(default=20, ge=1, le=1024)
+    upload_size_mb: int = Field(
+        default=20, ge=1, le=1024, description="Datenmenge je Upload-Messung"
+    )
     latency_host: str = Field(default="1.1.1.1", description="Ziel fuer Latenz unter Last")
     pause_traffic: bool = Field(
         default=True, description="Traffic-Profile waehrend der Messung pausieren"
@@ -303,16 +343,16 @@ class SpeedtestConfig(_Base):
 class WlanBandProfile(_Base):
     """Ein WLAN-Profil des Betriebssystems, das genau einem Band zugeordnet ist."""
 
-    band: Literal["2.4GHz", "5GHz", "6GHz"]
+    band: Literal["2.4GHz", "5GHz", "6GHz"] = Field(description="Frequenzband dieses Profils")
     profile_name: str = Field(description="Windows: Profilname; Linux: SSID/Verbindungsname")
-    ssid: str = ""
+    ssid: str = Field(default="", description="Netzname, falls er vom Profilnamen abweicht")
 
 
 class WlanConfig(_Base):
     """WLAN-Ueberwachung aus Router- und Clientsicht."""
 
-    enabled: bool = True
-    interval_s: float = Field(default=30.0, gt=0)
+    enabled: bool = Field(default=True, description="WLAN ueberwachen")
+    interval_s: float = Field(default=30.0, gt=0, description="Abstand zwischen zwei WLAN-Abfragen")
     router_view: bool = Field(default=True, description="TR-064-Sicht: Bands, Clients, RSSI")
     client_view: bool = Field(default=True, description="Lokale Sicht via netsh/iw")
     interface: str = Field(default="", description="Interface-Name; leer = automatisch")
@@ -320,8 +360,12 @@ class WlanConfig(_Base):
         default=False,
         description="Zyklischer Bandwechsel - setzt getrennte SSIDs je Band voraus!",
     )
-    band_switch_interval_s: float = Field(default=900.0, gt=0)
-    profiles: list[WlanBandProfile] = Field(default_factory=list)
+    band_switch_interval_s: float = Field(
+        default=900.0, gt=0, description="Verweildauer je Band vor dem Wechsel"
+    )
+    profiles: list[WlanBandProfile] = Field(
+        default_factory=list, description="WLAN-Profile des Betriebssystems, je Band eines"
+    )
 
     @model_validator(mode="after")
     def _check_switch_profiles(self) -> WlanConfig:
@@ -341,10 +385,12 @@ class WlanConfig(_Base):
 class StorageConfig(_Base):
     """Speicherorte und Schreibverhalten."""
 
-    data_dir: Path = Path("data")
-    export_dir: Path = Path("exports")
-    report_dir: Path = Path("reports")
-    log_dir: Path = Path("logs")
+    data_dir: Path = Field(
+        default=Path("data"), description="Ort der SQLite-Datenbank; relativ zum Arbeitsverzeichnis"
+    )
+    export_dir: Path = Field(default=Path("exports"), description="Ziel der CSV- und XLSX-Exporte")
+    report_dir: Path = Field(default=Path("reports"), description="Ziel der HTML-Berichte")
+    log_dir: Path = Field(default=Path("logs"), description="Ort der rotierenden Protokolldateien")
     batch_interval_s: float = Field(
         default=5.0, gt=0, description="Abstand der Sammel-Schreibvorgaenge in die SQLite-DB"
     )
@@ -354,17 +400,28 @@ class StorageConfig(_Base):
 class LoggingConfig(_Base):
     """Rotierende Logdateien."""
 
-    level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-    max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
-    backup_count: int = Field(default=5, ge=0)
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
+        default="INFO", description="Ab welcher Dringlichkeit protokolliert wird"
+    )
+    max_bytes: int = Field(
+        default=10 * 1024 * 1024, ge=1024, description="Groesse einer Logdatei bis zur Rotation"
+    )
+    backup_count: int = Field(
+        default=5, ge=0, description="Anzahl aufbewahrter aelterer Logdateien"
+    )
 
 
 class DashboardConfig(_Base):
-    """Live-Dashboard (in der Alpha noch nicht implementiert)."""
+    """Web-Dashboard im Browser."""
 
-    enabled: bool = False
-    host: str = "127.0.0.1"
-    port: int = Field(default=8080, ge=1, le=65535)
+    enabled: bool = Field(
+        default=False, description="Dashboard beim Start eines Laufs automatisch mitstarten"
+    )
+    host: str = Field(
+        default="127.0.0.1",
+        description="Adresse des Dashboards; bewusst nur lokal, es gibt keine Anmeldung",
+    )
+    port: int = Field(default=8080, ge=1, le=65535, description="Port des Dashboards")
 
 
 class DesktopConfig(_Base):
@@ -382,8 +439,8 @@ class DesktopConfig(_Base):
         gt=0,
         description="Ab dieser Ausfalldauer wird gemeldet - kurze Aussetzer nicht",
     )
-    window_width: int = Field(default=1280, ge=800)
-    window_height: int = Field(default=860, ge=600)
+    window_width: int = Field(default=1280, ge=800, description="Fensterbreite beim Start")
+    window_height: int = Field(default=860, ge=600, description="Fensterhoehe beim Start")
 
 
 class RunConfig(_Base):
@@ -391,7 +448,9 @@ class RunConfig(_Base):
 
     duration_s: float = Field(default=86400.0, gt=0, description="Gesamtdauer des Testlaufs")
     name: str = Field(default="", description="Freier Name, z.B. 'FRITZ!OS 8.02 - Wohnung'")
-    notes: str = ""
+    notes: str = Field(
+        default="", description="Freie Notiz zum Lauf; erscheint im Bericht unter dem Namen"
+    )
     resume_open_run: bool = Field(
         default=True, description="Offenen Testlauf beim Start fortsetzen statt neu beginnen"
     )

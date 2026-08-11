@@ -2,7 +2,7 @@
 
 <img src="docs/bilder/banner.png" alt="FRITZ!Box Langzeit-Testsystem" width="840">
 
-<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 408 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
+<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 494 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
 
 **Version 0.1.0a1 (Alpha)** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
 
@@ -179,7 +179,8 @@ Fritzbox_Test_APP/
 │  │                         settings.js · setup.js
 │  └─ resources/             config.example.yaml (kommentierte Vorlage)
 ├─ packaging/                PyInstaller-Spec · Build-Skripte · Startvorbereitung
-├─ tests/                    408 Tests, ohne Netzwerk lauffähig
+├─ tests/                    494 Tests, ohne Netzwerk lauffähig
+├─ docs/EINSTELLUNGEN.md     Referenz aller Konfigurationsfelder (erzeugt)
 ├─ docs/bilder/              Abbildungen dieser Datei
 ├─ beispieldaten/            Exporte zweier Läufe zum Ausprobieren
 ├─ assets/                   erzeugte Symbole (gitignored)
@@ -589,6 +590,10 @@ Dort legt `fbtest init` die Datei an.
 
 ### Einstellungen ohne Texteditor
 
+> 📖 **[Referenz aller Einstellungen →](docs/EINSTELLUNGEN.md)** – jedes Feld der
+> `config.yaml` mit Typ, Wertebereich, Standardwert und Bedeutung. Ebenfalls aus den
+> Modellen erzeugt, kann also nicht veralten.
+
 Das Formular wird **aus dem JSON-Schema der pydantic-Modelle erzeugt**, nicht von Hand
 gepflegt. Kommt in der Konfiguration ein Feld dazu, erscheint es hier automatisch mit
 Beschriftung, Beschreibung und Wertebereich. Eine handgeschriebene Maske wäre spätestens beim
@@ -776,12 +781,12 @@ vorn, statt ein weiteres zu öffnen.
 ```powershell
 pip install -r requirements-dev.txt
 
-.\.venv\Scripts\python.exe -m pytest              # 408 Tests, ohne Netzwerk
+.\.venv\Scripts\python.exe -m pytest              # 494 Tests, ohne Netzwerk
 .\.venv\Scripts\python.exe -m ruff check .        # Linting
 .\.venv\Scripts\python.exe -m mypy                # Typprüfung (strict für core/ und storage/)
 ```
 
-Aktueller Stand: **408 Tests grün, ruff ohne Befund, mypy ohne Befund.**
+Aktueller Stand: **494 Tests grün, ruff ohne Befund, mypy ohne Befund.**
 
 Getestet werden gezielt die Stellen, an denen Fehler teuer wären:
 
@@ -800,6 +805,7 @@ Getestet werden gezielt die Stellen, an denen Fehler teuer wären:
 | `test_power.py` | Standby-Sperre: Erwerb/Freigabe, Verhalten bei Fehlschlag, Mehrfachaufruf |
 | `test_secrets_store.py` | Rangfolge der Passwortquellen, Ausfall des Schlüsselspeichers, Kontotrennung je Box |
 | `test_config_service.py` | Feldgenaue Validierungsfehler, Schreiben unter Erhalt der Kommentare, Passwortbehandlung, Rohansicht |
+| `test_config_doc.py` | Referenz stimmt mit den Modellen überein, **jedes Feld hat eine Beschreibung**, kein Abschnitt ohne Einleitung |
 | `test_context.py` | Abgeleitete Pfade, Austausch der Konfiguration im Betrieb, Verhalten bei defekter Datei |
 | `test_paths.py` | Rangfolge der fünf Pfadregeln, Erkennung des Projektordners, Auffindbarkeit der mitgelieferten Dateien |
 
