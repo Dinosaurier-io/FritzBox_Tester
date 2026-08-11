@@ -253,13 +253,31 @@ class StreamingProfile(_TrafficProfileBase):
 
 
 class DownloadProfile(_TrafficProfileBase):
-    """Dauerdownload einer grossen Testdatei."""
+    """Dauerdownload einer grossen Testdatei.
+
+    Der Download laeuft ohne Unterbrechung: Ist die Datei durch, beginnt sofort
+    die naechste Runde. ``restart_after_mb`` bricht eine Runde schon vorher ab
+    und faengt neu an - noetig bei sehr grossen Testdateien, die sonst pro
+    Runde stundenlang laufen und nur einen einzigen Messwert liefern.
+    """
 
     type: Literal["download"] = Field(
         default="download", description="Profiltyp - bestimmt die uebrigen Felder"
     )
     url: str = Field(
         description="Testdatei; wird endlos wiederholt geladen und nirgends gespeichert"
+    )
+    restart_after_mb: float = Field(
+        default=0.0,
+        ge=0,
+        description=(
+            "Nach dieser Datenmenge beginnt der Download von vorn; 0 = ganze Datei laden"
+        ),
+    )
+    pause_s: float = Field(
+        default=0.0,
+        ge=0,
+        description="Pause zwischen zwei Runden; 0 = sofort weiterladen",
     )
 
 

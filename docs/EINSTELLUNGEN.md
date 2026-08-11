@@ -150,6 +150,11 @@ Welche Felder ein Profil hat, entscheidet sein `type`. Die folgenden Tabellen ze
 
 **`type: download`** – Dauerdownload einer grossen Testdatei.
 
+Der Download laeuft ohne Unterbrechung: Ist die Datei durch, beginnt sofort
+die naechste Runde. ``restart_after_mb`` bricht eine Runde schon vorher ab
+und faengt neu an - noetig bei sehr grossen Testdateien, die sonst pro
+Runde stundenlang laufen und nur einen einzigen Messwert liefern.
+
 | Feld | Typ | Standard | Bedeutung |
 |---|---|---|---|
 | `name` | Text | **Pflicht** | Freier Name, erscheint so in der Auswertung |
@@ -158,6 +163,8 @@ Welche Felder ein Profil hat, entscheidet sein `type`. Die folgenden Tabellen ze
 | `target_rate_mbps` | Zahl ab 0 | `0` | Ziel-Datenrate je Client in Mbit/s; 0 = unbegrenzt (Token-Bucket) |
 | `type` | `download` | `download` | Profiltyp - bestimmt die uebrigen Felder |
 | `url` | Text | **Pflicht** | Testdatei; wird endlos wiederholt geladen und nirgends gespeichert |
+| `restart_after_mb` | Zahl ab 0 | `0` | Nach dieser Datenmenge beginnt der Download von vorn; 0 = ganze Datei laden |
+| `pause_s` | Zahl ab 0 | `0` s | Pause zwischen zwei Runden; 0 = sofort weiterladen |
 
 
 **`type: upload`** – HTTP-POST von generierten Zufallsdaten.

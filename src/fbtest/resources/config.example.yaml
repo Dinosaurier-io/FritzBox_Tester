@@ -143,12 +143,20 @@ traffic:
       stall_window_s: 5.0
 
     # --- Dauerdownload mit begrenzter Rate ----------------------------------
+    # Die Datei wird ohne Unterbrechung geladen: Ist sie durch, beginnt sofort
+    # die naechste Runde. Am Ende jeder Runde entsteht ein Messwert.
     - name: dauerdownload
       type: download
       enabled: true
       clients: 1
       target_rate_mbps: 10.0
       url: https://proof.ovh.net/files/100Mb.dat
+      # Bricht eine Runde schon vor dem Dateiende ab und faengt neu an.
+      # 0 = ganze Datei. Bei sehr grossen Testdateien sinnvoll, sonst laeuft
+      # eine Runde stundenlang und liefert am Ende einen einzigen Messwert.
+      restart_after_mb: 0
+      # Pause zwischen zwei Runden; 0 = sofort weiterladen.
+      pause_s: 0
 
     # --- Upload: standardmaessig AUS, da ein passender Endpunkt noetig ist ---
     # httpbin akzeptiert POST, ist aber kein Bandbreiten-Testserver.

@@ -320,7 +320,15 @@ class TrafficGenerator(MonitorModule):
         client: httpx.AsyncClient,
         bucket: TokenBucket,
     ) -> None:
-        """Laedt dauerhaft eine grosse Testdatei (optional gedrosselt)."""
+        """Laedt dauerhaft eine grosse Testdatei (optional gedrosselt).
+
+        Eine Runde endet, wenn die Datei zu Ende ist - oder, falls
+        ``restart_after_mb`` gesetzt ist, sobald diese Menge erreicht wurde.
+        Danach beginnt sofort die naechste Runde, sofern ``pause_s`` nichts
+        anderes sagt. Am Ende jeder Runde entsteht ein Messwert; die Grenze
+        bestimmt also zugleich, wie dicht die Messpunkte liegen.
+        """
+        limit = int(profile.restart_after_mb * 1024 * 1024)
         while True:
             await self.gate.wait()
             started = time.monotonic()
@@ -332,6 +340,10 @@ class TrafficGenerator(MonitorModule):
                     await bucket.consume(len(chunk))
                     size += len(chunk)
                     self.stats[client_id].bytes_transferred += len(chunk)
+                    # Der Abbruch schliesst die Verbindung ueber den
+                    # Kontextmanager; die Gegenstelle sendet also nicht weiter.
+                    if limit and size >= limit:
+                        break
 
             elapsed = max(1e-6, time.monotonic() - started)
             self.stats[client_id].requests_ok += 1
@@ -343,6 +355,8 @@ class TrafficGenerator(MonitorModule):
                 size_bytes=size,
                 duration_s=round(elapsed, 2),
             )
+            if profile.pause_s:
+                await asyncio.sleep(profile.pause_s)
 
     async def _run_upload(
         self,
