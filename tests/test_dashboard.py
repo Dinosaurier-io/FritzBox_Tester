@@ -150,6 +150,19 @@ class TestStaticFiles:
     def test_assets_are_served(self, client: TestClient, name: str) -> None:
         assert client.get(f"/static/{name}").status_code == 200
 
+    @pytest.mark.parametrize("name", ["style.css", "app.js", "settings.js", "setup.js"])
+    def test_assets_must_be_revalidated(self, client: TestClient, name: str) -> None:
+        """Der Browser darf Skripte nicht ungefragt aus dem Speicher nehmen.
+
+        Die Seite wird bei jedem Aufruf neu erzeugt, die Skripte kamen aus dem
+        Zwischenspeicher: Neues HTML traf auf altes JavaScript, und ein
+        frisch eingebauter Knopf hatte keinen Klickempfaenger. Das sieht wie
+        ein Fehler im Programm aus, sitzt aber im Browser.
+        """
+        response = client.get(f"/static/{name}")
+        assert "no-cache" in response.headers.get("cache-control", "")
+        assert response.headers.get("etag"), "ohne ETag wird aus der Rueckfrage ein Volltransfer"
+
     def test_no_asset_is_shipped_unused(self, client: TestClient) -> None:
         """Jede Datei im Ordner ``static`` muss auch eingebunden sein.
 

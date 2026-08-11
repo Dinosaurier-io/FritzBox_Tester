@@ -123,6 +123,29 @@ class PasswordRequest(BaseModel):
     password: str = Field(description="Das Passwort im Klartext - wird nur weitergereicht")
 
 
+class _RevalidatingStatics(StaticFiles):
+    """Statische Dateien, die der Browser vor jeder Nutzung rueckfragen muss.
+
+    ``StaticFiles`` setzt kein ``Cache-Control``. Der Browser darf eine Datei
+    dann nach eigenem Ermessen fuer frisch halten und ohne Rueckfrage aus dem
+    Zwischenspeicher nehmen. Die Seite selbst wird bei jedem Aufruf neu
+    erzeugt (das Sitzungs-Token wird eingesetzt) - neues HTML traf so auf
+    altes JavaScript, und Knoepfe, die es in der Seite schon gab, hatten noch
+    keinen Klickempfaenger. Der Fehler sieht nach einem Fehler im Programm
+    aus, sitzt aber im Zwischenspeicher des Browsers.
+
+    ``no-cache`` verbietet nicht das Zwischenspeichern, sondern nur das
+    Verwenden ohne Rueckfrage. Zusammen mit dem ``ETag`` bleibt die Antwort
+    im Normalfall ein leeres ``304``.
+    """
+
+    def file_response(self, *args: Any, **kwargs: Any) -> Response:
+        """Haengt die Rueckfragepflicht an die fertige Antwort."""
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 # --------------------------------------------------------------------------
 # Anwendung
 # --------------------------------------------------------------------------
@@ -250,7 +273,7 @@ def create_app(context: AppContext) -> FastAPI:
         html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
         return HTMLResponse(html.replace(TOKEN_PLACEHOLDER, session_token))
 
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.mount("/static", _RevalidatingStatics(directory=STATIC_DIR), name="static")
 
     # -- Status ------------------------------------------------------------
 

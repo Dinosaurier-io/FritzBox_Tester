@@ -2,7 +2,7 @@
 
 <img src="docs/bilder/banner.png" alt="FRITZ!Box Langzeit-Testsystem" width="840">
 
-<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 517 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
+<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 521 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
 
 **Version 0.1.0a1 (Alpha)** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
 
@@ -179,7 +179,7 @@ Fritzbox_Test_APP/
 │  │                         settings.js · setup.js
 │  └─ resources/             config.example.yaml (kommentierte Vorlage)
 ├─ packaging/                PyInstaller-Spec · Build-Skripte · Startvorbereitung
-├─ tests/                    517 Tests, ohne Netzwerk lauffähig
+├─ tests/                    521 Tests, ohne Netzwerk lauffähig
 ├─ docs/EINSTELLUNGEN.md     Referenz aller Konfigurationsfelder (erzeugt)
 ├─ docs/bilder/              Abbildungen dieser Datei
 ├─ beispieldaten/            Exporte zweier Läufe zum Ausprobieren
@@ -781,12 +781,12 @@ vorn, statt ein weiteres zu öffnen.
 ```powershell
 pip install -r requirements-dev.txt
 
-.\.venv\Scripts\python.exe -m pytest              # 517 Tests, ohne Netzwerk
+.\.venv\Scripts\python.exe -m pytest              # 521 Tests, ohne Netzwerk
 .\.venv\Scripts\python.exe -m ruff check .        # Linting
 .\.venv\Scripts\python.exe -m mypy                # Typprüfung (strict für core/ und storage/)
 ```
 
-Aktueller Stand: **517 Tests grün, ruff ohne Befund, mypy ohne Befund.**
+Aktueller Stand: **521 Tests grün, ruff ohne Befund, mypy ohne Befund.**
 
 Getestet werden gezielt die Stellen, an denen Fehler teuer wären:
 
