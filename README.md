@@ -2,7 +2,7 @@
 
 <img src="docs/bilder/banner.png" alt="FRITZ!Box Langzeit-Testsystem" width="840">
 
-<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 541 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
+<img src="docs/bilder/plaketten.png" alt="Python 3.14 · 542 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
 
 **Version 2.0.0** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
 
@@ -179,7 +179,7 @@ Fritzbox_Test_APP/
 │  │                         settings.js · setup.js
 │  └─ resources/             config.example.yaml (kommentierte Vorlage)
 ├─ packaging/                PyInstaller-Spec · Build-Skripte · Startvorbereitung
-├─ tests/                    541 Tests, ohne Netzwerk lauffähig
+├─ tests/                    542 Tests, ohne Netzwerk lauffähig
 ├─ docs/EINSTELLUNGEN.md     Referenz aller Konfigurationsfelder (erzeugt)
 ├─ docs/bilder/              Abbildungen dieser Datei
 ├─ beispieldaten/            Exporte zweier Läufe zum Ausprobieren
@@ -720,6 +720,13 @@ auf einen Blick erkennbar, ob ein Latenzanstieg zufällig war oder mit einem Ere
 | **Bufferbloat Ø** | Latenzanstieg unter Volllast | kleiner = besser |
 | Datenvolumen | erzeugte Last | ohne Wertung |
 
+**Zwei Download-Kurven, zwei Aussagen.** Das Diagramm *Bandbreite* stammt aus dem Speedtest: alle
+paar Minuten ein Spitzenwert unter Idealbedingungen. Das Diagramm *Dauerdownload* zeigt je Runde
+die Rate, die der Traffic-Generator tatsächlich erreicht hat – also was die Leitung unter
+anhaltender Last hält. Ein Einbruch, den nur die zweite Kurve zeigt, betrifft die Dauerlast und
+nicht die Spitzenleistung. Wie dicht die Punkte liegen, bestimmt `restart_after_mb`: Der Messwert
+entsteht am Rundenende, eine kürzere Runde ergibt also eine feinere Kurve.
+
 **Bufferbloat verdient besondere Beachtung.** Zwei Firmware-Versionen können identische
 Bandbreite liefern, sich unter Last aber völlig unterschiedlich verhalten. Steigt die Latenz von
 10 ms auf 300 ms, sobald jemand etwas herunterlädt, ist der Anschluss für Videotelefonie oder
@@ -788,12 +795,12 @@ vorn, statt ein weiteres zu öffnen.
 ```powershell
 pip install -r requirements-dev.txt
 
-.\.venv\Scripts\python.exe -m pytest              # 541 Tests, ohne Netzwerk
+.\.venv\Scripts\python.exe -m pytest              # 542 Tests, ohne Netzwerk
 .\.venv\Scripts\python.exe -m ruff check .        # Linting
 .\.venv\Scripts\python.exe -m mypy                # Typprüfung (strict für core/ und storage/)
 ```
 
-Aktueller Stand: **541 Tests grün, ruff ohne Befund, mypy ohne Befund.**
+Aktueller Stand: **542 Tests grün, ruff ohne Befund, mypy ohne Befund.**
 
 Getestet werden gezielt die Stellen, an denen Fehler teuer wären:
 

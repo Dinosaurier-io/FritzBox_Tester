@@ -251,6 +251,34 @@ class TestReportGeneration:
         assert len(analysis.outages) == 2
         assert analysis.charts["latenz"].startswith("data:image/png;base64,")
 
+    def test_dauerdownload_has_its_own_chart(self, db: Database) -> None:
+        """Der Dauerdownload braucht eine eigene Kurve.
+
+        Die Bandbreitenkurve zeigt den Speedtest: alle paar Minuten ein
+        Spitzenwert unter Idealbedingungen. Was die Leitung unter Dauerlast
+        tatsaechlich haelt, steht allein in den Runden des Downloads - ohne
+        eigenes Diagramm bleibt genau dieser Verlauf im Bericht unsichtbar.
+        """
+        ohne_last = analyze_run(db, self._populate(db, "Ohne Last", "8.00", outage_count=0))
+
+        run = db.create_test_run("Mit Last", "{}", "8.00", "FRITZ!Box 7590")
+        base = time.time() - 3600
+        db.insert_measurements(
+            run.id,
+            [
+                Measurement("traffic", "download_rate", 40.0 + index % 7, "Mbit/s",
+                            timestamp=base + index * 60, meta={"profile": "dauerlast#1"})
+                for index in range(30)
+            ],
+        )
+        db.finish_test_run(run.id)
+        mit_last = analyze_run(db, run.id)
+
+        assert mit_last.charts["dauerdownload"].startswith("data:image/png;base64,")
+        assert mit_last.charts["dauerdownload"] != ohne_last.charts["dauerdownload"], (
+            "Die Messwerte des Dauerdownloads landen nicht im Diagramm."
+        )
+
     def test_analysis_of_unknown_run_raises(self, db: Database) -> None:
         with pytest.raises(ValueError, match="existiert nicht"):
             analyze_run(db, 999)

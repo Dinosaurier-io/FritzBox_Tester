@@ -247,6 +247,13 @@ def analyze_run(db: Database, run_id: int) -> RunAnalysis:
         if r["latency_loaded_ms"] is not None and r["latency_idle_ms"] is not None
     ]
 
+    # -- Dauerdownload -----------------------------------------------------
+    # Eigene Reihe neben der Speedtest-Bandbreite: Der Speedtest misst alle
+    # paar Minuten die Spitzenleistung, der Dauerdownload zeigt, was die
+    # Leitung unter Dauerlast tatsaechlich haelt. Beides in ein Diagramm zu
+    # legen wuerde zwei verschiedene Aussagen vermischen.
+    download_rows = db.fetch_measurements(run_id, module="traffic", metric="download_rate")
+
     # -- Datenvolumen ------------------------------------------------------
     volume_bytes = _traffic_volume(db, run_id, router_rows)
 
@@ -366,6 +373,13 @@ def analyze_run(db: Database, run_id: int) -> RunAnalysis:
             "Bandbreite ueber die Zeit",
             "Mbit/s",
             outages=outage_spans,
+        ),
+        "dauerdownload": charts.timeseries_chart(
+            _series_by_meta(download_rows, "profile"),
+            "Dauerdownload - erreichte Rate je Runde",
+            "Mbit/s",
+            outages=outage_spans,
+            markers=reboot_markers,
         ),
         "uptime": charts.timeseries_chart(
             {
