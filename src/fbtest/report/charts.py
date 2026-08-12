@@ -62,21 +62,39 @@ def _finish(fig: Figure, ax: Axes, ylabel: str) -> str:
     return f"data:image/png;base64,{encoded}"
 
 
-def _empty_note(title: str) -> str:
+def _empty_note(title: str, hint: str = "") -> str:
     """Erzeugt ein Platzhalterbild, wenn keine Daten vorliegen.
 
-    Bewusst ein leeres Diagramm mit Hinweis statt erfundener Werte.
+    Bewusst ein leeres Diagramm mit Hinweis statt erfundener Werte. Ohne
+    Begruendung sieht ein leeres Diagramm allerdings nach Defekt aus, und der
+    Leser sucht den Fehler im Programm statt in seinen Einstellungen - wie die
+    Kennzahlen im Management-Summary nennt der Platzhalter deshalb den Grund.
+
+    Args:
+        title: Titel des Diagramms, das keine Daten hat.
+        hint: Zusaetzliche Zeile darunter, die den haeufigsten Grund erklaert.
     """
     fig, ax = plt.subplots(figsize=_FIGSIZE)
     ax.text(
         0.5,
-        0.5,
+        0.58 if hint else 0.5,
         f"Keine Daten fuer '{title}' vorhanden.",
         ha="center",
         va="center",
         fontsize=11,
         color="#777777",
     )
+    if hint:
+        ax.text(
+            0.5,
+            0.40,
+            hint,
+            ha="center",
+            va="center",
+            fontsize=9,
+            color="#999999",
+            wrap=True,
+        )
     ax.set_xticks([])
     ax.set_yticks([])
     for spine in ax.spines.values():
@@ -95,6 +113,7 @@ def timeseries_chart(
     ylabel: str,
     outages: Sequence[tuple[float, float]] = (),
     markers: Sequence[tuple[float, str]] = (),
+    empty_hint: str = "",
 ) -> str:
     """Zeichnet eine oder mehrere Zeitreihen.
 
@@ -104,13 +123,15 @@ def timeseries_chart(
         ylabel: Beschriftung der Y-Achse.
         outages: Zeitraeume, die als rote Flaeche hinterlegt werden.
         markers: Einzelzeitpunkte mit Beschriftung (z.B. Router-Neustarts).
+        empty_hint: Erklaerung, die im Platzhalter erscheint, falls keine
+            Messwerte vorliegen.
 
     Returns:
         Das Diagramm als ``data:``-URI.
     """
     usable = {name: data for name, data in series.items() if data[0]}
     if not usable:
-        return _empty_note(title)
+        return _empty_note(title, empty_hint)
 
     fig, ax = plt.subplots(figsize=_FIGSIZE)
     for index, (name, (timestamps, values)) in enumerate(sorted(usable.items())):

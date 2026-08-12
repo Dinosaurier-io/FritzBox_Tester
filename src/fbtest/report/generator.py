@@ -380,6 +380,12 @@ def analyze_run(db: Database, run_id: int) -> RunAnalysis:
             "Mbit/s",
             outages=outage_spans,
             markers=reboot_markers,
+            empty_hint=(
+                "Ein Messwert entsteht am Ende einer Download-Runde. Dauert eine Runde "
+                "laenger als der ganze Lauf, bleibt die Kurve leer:\n"
+                "eine 1-GiB-Datei bei 10 Mbit/s braucht rund 14 Minuten. "
+                "Kuerzere Runden ueber 'restart_after_mb' im Download-Profil."
+            ),
         ),
         "uptime": charts.timeseries_chart(
             {

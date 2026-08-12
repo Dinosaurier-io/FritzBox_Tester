@@ -24,6 +24,7 @@ from fbtest.core.models import (
 from fbtest.core.models import TestRun as RunRecord
 from fbtest.core.scheduler import Scheduler
 from fbtest.modules.traffic_generator import TokenBucket, mbps_to_bytes_per_s
+from fbtest.report import charts
 from fbtest.report.generator import (
     ComparisonRow,
     Metric,
@@ -278,6 +279,25 @@ class TestReportGeneration:
         assert mit_last.charts["dauerdownload"] != ohne_last.charts["dauerdownload"], (
             "Die Messwerte des Dauerdownloads landen nicht im Diagramm."
         )
+
+    def test_empty_chart_explains_itself(self, db: Database) -> None:
+        """Ein leeres Diagramm muss den Grund nennen, nicht nur die Leere.
+
+        "Keine Daten vorhanden" sieht nach Defekt aus. Beim Dauerdownload ist
+        die Ursache aber fast immer eine Einstellung: Der Messwert entsteht am
+        Rundenende, und eine Runde ueber die ganze Testdatei kann laenger
+        dauern als der Lauf. Ohne diesen Hinweis sucht der Leser den Fehler im
+        Programm statt in 'restart_after_mb'.
+        """
+        ohne_hinweis = charts.timeseries_chart({}, "Titel", "Einheit")
+        mit_hinweis = charts.timeseries_chart({}, "Titel", "Einheit", empty_hint="Warum leer.")
+        assert mit_hinweis != ohne_hinweis, "Der Hinweis landet nicht im Platzhalterbild."
+
+        # Und der Bericht muss ihn auch tatsaechlich mitgeben.
+        leer = analyze_run(db, self._populate(db, "Ohne Last", "8.00", outage_count=0))
+        assert leer.charts["dauerdownload"] != charts.timeseries_chart(
+            {}, "Dauerdownload - erreichte Rate je Runde", "Mbit/s"
+        ), "Das leere Dauerdownload-Diagramm nennt seinen Grund nicht."
 
     def test_analysis_of_unknown_run_raises(self, db: Database) -> None:
         with pytest.raises(ValueError, match="existiert nicht"):
