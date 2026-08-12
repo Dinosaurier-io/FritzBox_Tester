@@ -4,7 +4,7 @@
 
 <img src="docs/bilder/plaketten.png" alt="Python 3.14 · 541 Tests grün · mypy strict · Windows und Linux · MIT-Lizenz" width="600">
 
-**Version 0.1.0a1 (Alpha)** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
+**Version 2.0.0** · Projektarbeit Informatiker EFZ, Fachrichtung Plattformentwicklung
 
 </div>
 

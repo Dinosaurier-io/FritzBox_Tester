@@ -6,5 +6,5 @@ Erreichbarkeit und Internetverbindung, erkennt Ausfaelle sowie ungeplante
 Router-Neustarts und erstellt daraus einen vergleichbaren Testbericht.
 """
 
-__version__ = "0.1.0a1"
+__version__ = "2.0.0"
 __all__ = ["__version__"]
